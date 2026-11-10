@@ -1,0 +1,48 @@
+# Local AI tooling (not part of the project)
+.agents/
+.claude/
+skills-lock.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vs/
+.vscode/
+.idea/
+*.swp
+
+# Unity (game/)
+game/[Ll]ibrary/
+game/[Tt]emp/
+game/[Oo]bj/
+game/[Bb]uild/
+game/[Bb]uilds/
+game/[Ll]ogs/
+game/[Uu]ser[Ss]ettings/
+game/[Mm]emoryCaptures/
+game/[Rr]ecordings/
+game/Assets/Plugins/Editor/JetBrains*
+game/*.csproj
+game/*.sln
+game/*.slnx
+game/*.unityproj
+game/*.pidb
+game/*.booproj
+game/*.user
+game/*.userprefs
+game/*.pdb
+game/*.mdb
+game/*.opendb
+game/*.VC.db
+game/*.apk
+game/*.aab
+game/crashlytics-build.properties
+game/sysinfo.txt
+
+# Python (server/)
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.pytest_cache/
+.ruff_cache/
