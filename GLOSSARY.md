@@ -14,6 +14,14 @@ _Avoid_: 逻辑层、模型层、core
 读输入、驱动物理与画面 / 音效、把事件转发给 Run 并按 Run 的状态更新画面的 MonoBehaviour 代码；不含规则判断。
 _Avoid_: 视图层、客户端
 
+**对象池（Object pool）**:
+回收并复用对象、避免反复创建 / 销毁的通用工具；纯 C# 核心为 `ObjectPool<T>`（程序集 `DungeonSurvivors.Pooling`），表现层用 `PrefabPool` 包装 prefab 实例。有上限：对象全部取出且已达上限时 `TryGet` 返回 false，调用方放弃这次生成。
+_Avoid_: 缓存、Spawner、Factory
+
+**回收（Release）**:
+把用完的对象还给对象池，此时运行重置回调。重复回收同一对象被忽略；回收不属于该池的对象是调用方 bug，会抛异常。
+_Avoid_: Return、Despawn、Recycle
+
 ### 一局游戏
 
 **Run**:
@@ -45,4 +53,5 @@ _Avoid_: Result、State、GameOver
 - 规则层程序集：`DungeonSurvivors.Rules`，位于 `game/Assets/_Project/Scripts/Rules/`，命名空间 `DungeonSurvivors.Rules`，`noEngineReferences: true`。
 - 规则层测试程序集：`DungeonSurvivors.Rules.Tests`（EditMode），位于 `game/Assets/_Project/Tests/EditMode/`，命名空间 `DungeonSurvivors.Rules.Tests`。
 - 测试类按被测规则命名 `Run<规则>Tests`（如 `RunHealthTests`），测试方法写成「情境_结果」（如 `DamageWithinHurtCooldown_IsIgnored`）。
+- 对象池程序集：`DungeonSurvivors.Pooling`，位于 `game/Assets/_Project/Scripts/Pooling/Core/`，`noEngineReferences: true`；测试程序集 `DungeonSurvivors.Pooling.Tests` 位于 `game/Assets/_Project/Tests/EditMode/Pooling/`。GameObject 适配层 `PrefabPool` 在 `Scripts/Pooling/` 下（不属于该程序集）。
 - 新规则（经验、升级抽取、刷怪导演、胜负、计分）加入同一程序集，并自带测试。
