@@ -7,11 +7,11 @@ using UnityEngine;
 namespace DungeonSurvivors.EditorTools
 {
     /// <summary>
-    /// Builds the Playground test scene (player, walls, obstacles, following camera) from code,
+    /// Builds the Playground test scene (player, walls, obstacles, following camera, Run, enemy spawning) from code,
     /// so the scene is reproducible and reviewable instead of hand-assembled.
     /// Run from the menu, or in batch mode with
     /// <c>-executeMethod DungeonSurvivors.EditorTools.PlaygroundSceneBuilder.Build</c>.
-    /// Re-running overwrites the scene and the player prefab, so tune values on the prefab
+    /// Re-running overwrites the scene and the player and enemy prefabs, so tune values on the prefabs
     /// or change them here; manual edits to the generated scene are lost on the next rebuild.
     /// </summary>
     public static class PlaygroundSceneBuilder
@@ -20,10 +20,13 @@ namespace DungeonSurvivors.EditorTools
         private const string TemplateScenePath = "Assets/Scenes/SampleScene.unity";
         private const string ScenePath = Root + "/Scenes/Playground.unity";
         private const string PrefabPath = Root + "/Prefabs/Player.prefab";
+        private const string EnemyPrefabPath = Root + "/Prefabs/ChaserEnemy.prefab";
         private const string SpritePath = Root + "/Art/Placeholder/WhiteSquare.png";
         private const int SpriteSize = 16;
 
-        private static readonly Vector2 ArenaSize = new Vector2(24f, 16f);
+        // Much larger than the camera's view (about 18 x 10), so enemies spawned just off-screen are still inside the walls.
+        private static readonly Vector2 ArenaSize = new Vector2(80f, 80f);
+        private const int EnemyPoolSize = 300;
         private const float WallThickness = 1f;
 
         [MenuItem("Dungeon Survivors/Rebuild Playground Scene")]
@@ -31,6 +34,7 @@ namespace DungeonSurvivors.EditorTools
         {
             var sprite = CreatePlaceholderSprite();
             var playerPrefab = CreatePlayerPrefab(sprite);
+            var enemyPrefab = CreateEnemyPrefab(sprite);
 
             // Start from the URP 2D template scene so the camera and Global Light 2D are already set up.
             EnsureFolder(Path.GetDirectoryName(ScenePath));
@@ -47,6 +51,7 @@ namespace DungeonSurvivors.EditorTools
             follow.ApplyModifiedPropertiesWithoutUndo();
 
             BuildArena(sprite);
+            BuildEnemySpawning(enemyPrefab, player.transform, camera);
 
             EditorSceneManager.SaveScene(scene);
             SetAsFirstBuildScene(ScenePath);
@@ -98,6 +103,48 @@ namespace DungeonSurvivors.EditorTools
             var prefab = PrefabUtility.SaveAsPrefabAsset(go, PrefabPath);
             Object.DestroyImmediate(go);
             return prefab;
+        }
+
+        private static GameObject CreateEnemyPrefab(Sprite sprite)
+        {
+            EnsureFolder(Path.GetDirectoryName(EnemyPrefabPath));
+
+            var go = new GameObject("ChaserEnemy");
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = new Color(0.9f, 0.3f, 0.3f);
+            renderer.sortingOrder = 5; // under the player
+            go.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
+
+            // A trigger reports touching the player without pushing it or blocking other enemies.
+            var collider = go.AddComponent<CircleCollider2D>();
+            collider.radius = 0.5f;
+            collider.isTrigger = true;
+
+            go.AddComponent<ChaserEnemy>(); // RequireComponent adds the Rigidbody2D
+            ChaserEnemy.ConfigureBody(go.GetComponent<Rigidbody2D>());
+
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, EnemyPrefabPath);
+            Object.DestroyImmediate(go);
+            return prefab;
+        }
+
+        private static void BuildEnemySpawning(GameObject enemyPrefab, Transform player, Camera camera)
+        {
+            var runHost = new GameObject("RunHost").AddComponent<RunHost>();
+
+            var pool = new GameObject("EnemyPool").AddComponent<PrefabPool>();
+            var poolSettings = new SerializedObject(pool);
+            poolSettings.FindProperty("prefab").objectReferenceValue = enemyPrefab;
+            poolSettings.FindProperty("maxSize").intValue = EnemyPoolSize;
+            poolSettings.ApplyModifiedPropertiesWithoutUndo();
+
+            var spawner = new SerializedObject(new GameObject("EnemySpawner").AddComponent<EnemySpawner>());
+            spawner.FindProperty("runHost").objectReferenceValue = runHost;
+            spawner.FindProperty("pool").objectReferenceValue = pool;
+            spawner.FindProperty("target").objectReferenceValue = player;
+            spawner.FindProperty("viewCamera").objectReferenceValue = camera;
+            spawner.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void BuildArena(Sprite sprite)

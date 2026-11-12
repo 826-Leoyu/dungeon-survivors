@@ -11,5 +11,10 @@ namespace DungeonSurvivors.Rules
         }
 
         public int Next(int minInclusive, int maxExclusive) => random.Next(minInclusive, maxExclusive);
+
+        // Clamped because rounding a double just below 1 to float can give exactly 1.
+        public float NextFloat() => System.Math.Min((float)random.NextDouble(), OneMinusEpsilon);
+
+        private const float OneMinusEpsilon = 0.99999994f;
     }
 }

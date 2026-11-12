@@ -44,14 +44,40 @@ _Avoid_: 游戏时间、timer
 受到一次伤害后，再次受伤被忽略的秒数。代码中为 `HurtCooldown`。
 _Avoid_: 无敌帧、i-frames、invincibility
 
+**RunHost**:
+表现层中持有本场景 Run 的组件：按 Inspector 数值创建 Run、每帧 Tick、Run 结束时处理结局（目前是日志加冻结画面）。其他组件通过它向 Run 报告事件。
+_Avoid_: GameManager、RunManager
+
 **结局（Outcome）**:
 Run 的胜负状态：进行中（`InProgress`）、失败（`Defeat`）；之后加入胜利。Run 结束后不再接受任何事件。
 _Avoid_: Result、State、GameOver
+
+### 敌人与刷怪
+
+**追踪型敌人（Chaser）**:
+直线朝玩家移动的第一种敌人。代码中为 `ChaserEnemy`。身体是 kinematic trigger：敌人之间互相重叠、不推玩家、穿墙。
+_Avoid_: Zombie、Follower
+
+**敌人生命值（Enemy health）**:
+单个敌人的生命值规则。只有致命的那一击报告死亡，打在已死敌人身上的伤害被忽略。代码中为 `EnemyHealth`。
+_Avoid_: HP、EnemyStats
+
+**接触伤害（Contact damage）**:
+敌人碰到玩家时报告给 Run 的伤害；是否生效由受伤间隔决定，敌人自己不计时。
+_Avoid_: 碰撞伤害、touch damage
+
+**刷怪圈（Spawn ring）**:
+摄像机可视矩形向外扩一圈边距后的边框；敌人在边框上均匀随机的位置生成，所以总在屏幕外出现。代码中为 `SpawnRing`。
+_Avoid_: 刷怪区、spawn area
+
+**刷怪计时器（Spawn timer）**:
+按固定间隔给出该生成几个敌人；长帧不丢失生成次数。刷怪导演（W2）会取代固定间隔。代码中为 `SpawnTimer`。
+_Avoid_: Spawner、wave timer
 
 ## 命名约定
 
 - 规则层程序集：`DungeonSurvivors.Rules`，位于 `game/Assets/_Project/Scripts/Rules/`，命名空间 `DungeonSurvivors.Rules`，`noEngineReferences: true`。
 - 规则层测试程序集：`DungeonSurvivors.Rules.Tests`（EditMode），位于 `game/Assets/_Project/Tests/EditMode/`，命名空间 `DungeonSurvivors.Rules.Tests`。
-- 测试类按被测规则命名 `Run<规则>Tests`（如 `RunHealthTests`），测试方法写成「情境_结果」（如 `DamageWithinHurtCooldown_IsIgnored`）。
+- 测试类按被测规则命名 `Run<规则>Tests`（如 `RunHealthTests`）；不属于 Run 的规则类型用 `<类型>Tests`（如 `EnemyHealthTests`），测试方法写成「情境_结果」（如 `DamageWithinHurtCooldown_IsIgnored`）。
 - 对象池程序集：`DungeonSurvivors.Pooling`，位于 `game/Assets/_Project/Scripts/Pooling/Core/`，`noEngineReferences: true`；测试程序集 `DungeonSurvivors.Pooling.Tests` 位于 `game/Assets/_Project/Tests/EditMode/Pooling/`。GameObject 适配层 `PrefabPool` 在 `Scripts/Pooling/` 下（不属于该程序集）。
 - 新规则（经验、升级抽取、刷怪导演、胜负、计分）加入同一程序集，并自带测试。

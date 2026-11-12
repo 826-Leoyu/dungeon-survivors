@@ -5,5 +5,8 @@ namespace DungeonSurvivors.Rules
     {
         /// <summary>Returns an integer in [minInclusive, maxExclusive).</summary>
         int Next(int minInclusive, int maxExclusive);
+
+        /// <summary>Returns a float in [0, 1).</summary>
+        float NextFloat();
     }
 }
