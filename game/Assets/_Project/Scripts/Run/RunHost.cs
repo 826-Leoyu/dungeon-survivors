@@ -27,7 +27,7 @@ namespace DungeonSurvivors
         {
             get
             {
-                if (run == null) Build();
+                EnsureBuilt();
                 return run;
             }
         }
@@ -37,13 +37,15 @@ namespace DungeonSurvivors
         {
             get
             {
-                if (random == null) Build();
+                EnsureBuilt();
                 return random;
             }
         }
 
-        private void Build()
+        private void EnsureBuilt()
         {
+            if (run != null) return;
+
             var actualSeed = seed != 0 ? seed : Environment.TickCount;
             Debug.Log($"[RunHost] Starting Run with seed {actualSeed}");
 

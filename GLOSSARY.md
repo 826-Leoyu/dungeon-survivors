@@ -70,6 +70,10 @@ _Avoid_: 碰撞伤害、touch damage
 摄像机可视矩形向外扩一圈边距后的边框；敌人在边框上均匀随机的位置生成，所以总在屏幕外出现。代码中为 `SpawnRing`。
 _Avoid_: 刷怪区、spawn area
 
+**敌人生成器（Enemy spawner）**:
+表现层组件 `EnemySpawner`：按刷怪计时器的节奏，在刷怪圈上从对象池取出敌人并交给它场景引用。不含规则判断；规则在刷怪计时器和刷怪圈里。
+_Avoid_: 用 Spawner 指对象池或刷怪计时器
+
 **刷怪计时器（Spawn timer）**:
 按固定间隔给出该生成几个敌人；长帧不丢失生成次数。刷怪导演（W2）会取代固定间隔。代码中为 `SpawnTimer`。
 _Avoid_: Spawner、wave timer
