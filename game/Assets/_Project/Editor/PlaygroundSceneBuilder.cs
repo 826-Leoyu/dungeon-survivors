@@ -90,70 +90,56 @@ namespace DungeonSurvivors.EditorTools
 
         private static GameObject CreatePlayerPrefab(Sprite sprite)
         {
-            EnsureFolder(Path.GetDirectoryName(PrefabPath));
-
-            var go = new GameObject("Player") { tag = "Player" };
-            var renderer = go.AddComponent<SpriteRenderer>();
-            renderer.sprite = sprite;
-            renderer.color = new Color(0.35f, 0.75f, 1f);
-            renderer.sortingOrder = 10;
-            go.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
-
-            // A circle slides along walls and around corners instead of catching on them like a box.
-            var collider = go.AddComponent<CircleCollider2D>();
-            collider.radius = 0.5f;
+            // A solid circle slides along walls and around corners instead of catching on them like a box.
+            var go = NewCircleSprite("Player", sprite, new Color(0.35f, 0.75f, 1f), sortingOrder: 10, size: 0.8f, isTrigger: false);
+            go.tag = "Player";
 
             go.AddComponent<PlayerMovement>(); // RequireComponent adds the Rigidbody2D
             PlayerMovement.ConfigureBody(go.GetComponent<Rigidbody2D>());
-
-            var prefab = PrefabUtility.SaveAsPrefabAsset(go, PrefabPath);
-            Object.DestroyImmediate(go);
-            return prefab;
+            return SaveAsPrefab(go, PrefabPath);
         }
 
         private static GameObject CreateEnemyPrefab(Sprite sprite)
         {
-            EnsureFolder(Path.GetDirectoryName(EnemyPrefabPath));
-
-            var go = new GameObject("ChaserEnemy");
-            var renderer = go.AddComponent<SpriteRenderer>();
-            renderer.sprite = sprite;
-            renderer.color = new Color(0.9f, 0.3f, 0.3f);
-            renderer.sortingOrder = 5; // under the player
-            go.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
-
-            // A trigger reports touching the player without pushing it or blocking other enemies.
-            var collider = go.AddComponent<CircleCollider2D>();
-            collider.radius = 0.5f;
-            collider.isTrigger = true;
+            // A trigger reports touching the player without pushing it or blocking other enemies. Drawn under the player.
+            var go = NewCircleSprite("ChaserEnemy", sprite, new Color(0.9f, 0.3f, 0.3f), sortingOrder: 5, size: 0.8f, isTrigger: true);
 
             go.AddComponent<ChaserEnemy>(); // RequireComponent adds the Rigidbody2D
             ChaserEnemy.ConfigureBody(go.GetComponent<Rigidbody2D>());
-
-            var prefab = PrefabUtility.SaveAsPrefabAsset(go, EnemyPrefabPath);
-            Object.DestroyImmediate(go);
-            return prefab;
+            return SaveAsPrefab(go, EnemyPrefabPath);
         }
 
         private static GameObject CreateBulletPrefab(Sprite sprite)
         {
-            EnsureFolder(Path.GetDirectoryName(BulletPrefabPath));
-
-            var go = new GameObject("Bullet");
-            var renderer = go.AddComponent<SpriteRenderer>();
-            renderer.sprite = sprite;
-            renderer.color = new Color(1f, 0.9f, 0.3f);
-            renderer.sortingOrder = 15; // over the player and enemies
-            go.transform.localScale = new Vector3(0.3f, 0.3f, 1f);
-
-            var collider = go.AddComponent<CircleCollider2D>();
-            collider.radius = 0.5f;
-            collider.isTrigger = true;
+            // A trigger, like the enemies, so it reports hits without pushing anything. Drawn over the player and enemies.
+            var go = NewCircleSprite("Bullet", sprite, new Color(1f, 0.9f, 0.3f), sortingOrder: 15, size: 0.3f, isTrigger: true);
 
             go.AddComponent<Bullet>(); // RequireComponent adds the Rigidbody2D
             Bullet.ConfigureBody(go.GetComponent<Rigidbody2D>());
+            return SaveAsPrefab(go, BulletPrefabPath);
+        }
 
-            var prefab = PrefabUtility.SaveAsPrefabAsset(go, BulletPrefabPath);
+        /// <summary>A square placeholder sprite of <paramref name="size"/> world units with a circle collider filling it.</summary>
+        private static GameObject NewCircleSprite(string name, Sprite sprite, Color color, int sortingOrder, float size, bool isTrigger)
+        {
+            var go = new GameObject(name);
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = color;
+            renderer.sortingOrder = sortingOrder;
+            go.transform.localScale = new Vector3(size, size, 1f);
+
+            var collider = go.AddComponent<CircleCollider2D>();
+            collider.radius = 0.5f;
+            collider.isTrigger = isTrigger;
+            return go;
+        }
+
+        /// <summary>Saves the temporary scene object <paramref name="go"/> as a prefab asset, then destroys the object.</summary>
+        private static GameObject SaveAsPrefab(GameObject go, string path)
+        {
+            EnsureFolder(Path.GetDirectoryName(path));
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go);
             return prefab;
         }

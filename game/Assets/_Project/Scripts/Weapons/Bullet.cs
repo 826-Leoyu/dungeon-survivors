@@ -3,7 +3,7 @@ using UnityEngine;
 namespace DungeonSurvivors
 {
     /// <summary>
-    /// A projectile that flies in a straight line, damages the first enemy it touches, and goes back to its pool on a hit or when its lifetime runs out.
+    /// A bullet that flies in a straight line, damages the first enemy it touches, and goes back to its pool on a hit or when its lifetime runs out.
     /// Pooled: the weapon hands it its flight with <see cref="Launch"/> each time it comes out of the pool.
     /// Its body is a kinematic trigger, like the enemies': it passes through walls and the player.
     /// </summary>
