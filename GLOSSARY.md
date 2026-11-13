@@ -100,6 +100,12 @@ _Avoid_: Fire timer、reload
 武器瞄准的敌人：离射击者最近的一个；距离相同时取列表中靠前的。代码中为 `NearestTarget`。
 _Avoid_: Lock-on、aim assist
 
+### 输入
+
+**浮动摇杆（Floating joystick）**:
+触屏移动输入：手指在任意非 UI 区域按下时摇杆出现在按下点，拖动距离除以半径即力度（最大为 1），松手归零。由按下它的那根手指独占。规则在纯 C# 的 `FloatingStick`；表现层 `FloatingJoystick` 把值写进虚拟手柄左摇杆，所以 `Player/Move` 不区分设备。
+_Avoid_: 虚拟摇杆、VirtualJoystick、Thumbstick
+
 ## 命名约定
 
 - 规则层程序集：`DungeonSurvivors.Rules`，位于 `game/Assets/_Project/Scripts/Rules/`，命名空间 `DungeonSurvivors.Rules`，`noEngineReferences: true`。

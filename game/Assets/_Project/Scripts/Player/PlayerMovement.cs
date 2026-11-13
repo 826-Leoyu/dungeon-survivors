@@ -20,7 +20,7 @@ namespace DungeonSurvivors
 
         private void Update()
         {
-            // Keyboard composites are already normalized; the clamp covers analog sticks and the future touch joystick.
+            // Keyboard composites are already normalized; the clamp is a guard for any device that is not (analog sticks, the floating joystick).
             moveInput = Vector2.ClampMagnitude(moveAction.ReadValue<Vector2>(), 1f);
         }
 

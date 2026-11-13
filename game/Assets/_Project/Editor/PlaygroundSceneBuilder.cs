@@ -3,11 +3,15 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
+using UnityEngine.UI;
 
 namespace DungeonSurvivors.EditorTools
 {
     /// <summary>
-    /// Builds the Playground test scene (player, walls, obstacles, following camera, Run, enemy spawning, starting weapon) from code,
+    /// Builds the Playground test scene (player, walls, obstacles, following camera, Run, enemy spawning, starting weapon,
+    /// touch joystick) from code,
     /// so the scene is reproducible and reviewable instead of hand-assembled.
     /// Run from the menu, or in batch mode with
     /// <c>-executeMethod DungeonSurvivors.EditorTools.PlaygroundSceneBuilder.Build</c>.
@@ -31,6 +35,14 @@ namespace DungeonSurvivors.EditorTools
         // Far more than the default fire rate keeps alive at once (lifetime / interval = 4); headroom for faster weapons.
         private const int BulletPoolSize = 100;
         private const float WallThickness = 1f;
+
+        // Canvas scaler reference: a landscape 1080p screen, matching width and height equally so portrait phones get a similar size.
+        private static readonly Vector2 UiReferenceResolution = new Vector2(1920f, 1080f);
+        // Written into the joystick and used as the base circle's radius, so the circle shows the full-speed distance.
+        private const float JoystickRadius = 80f;
+        private const float JoystickKnobSize = 70f;
+        // Below every other canvas (default 0): overlay canvases with a higher sort order are hit first.
+        private const int JoystickCanvasSortOrder = -100;
 
         [MenuItem("Dungeon Survivors/Rebuild Playground Scene")]
         public static void Build()
@@ -58,6 +70,7 @@ namespace DungeonSurvivors.EditorTools
             var runHost = new GameObject("RunHost").AddComponent<RunHost>();
             BuildEnemySpawning(runHost, enemyPrefab, player.transform, camera);
             BuildStartingWeapon(runHost, bulletPrefab, player.transform);
+            BuildTouchJoystick();
 
             EditorSceneManager.SaveScene(scene);
             SetAsFirstBuildScene(ScenePath);
@@ -165,6 +178,69 @@ namespace DungeonSurvivors.EditorTools
             weapon.FindProperty("bulletPool").objectReferenceValue = pool;
             weapon.FindProperty("shooter").objectReferenceValue = player;
             weapon.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void BuildTouchJoystick()
+        {
+            // Routes pointer and touch input to UI; with no actions assigned, the module uses the Input System's default UI actions.
+            new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+
+            var area = CreateJoystickArea(CreateJoystickCanvas());
+
+            var circle = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+            var stickBase = NewUiImage("Base", area.transform, circle, new Color(1f, 1f, 1f, 0.25f)).rectTransform;
+            stickBase.sizeDelta = Vector2.one * (2f * JoystickRadius);
+            var knob = NewUiImage("Knob", stickBase, circle, new Color(1f, 1f, 1f, 0.6f)).rectTransform;
+            knob.sizeDelta = Vector2.one * JoystickKnobSize;
+
+            var joystick = new SerializedObject(area.AddComponent<FloatingJoystick>());
+            joystick.FindProperty("radius").floatValue = JoystickRadius;
+            joystick.FindProperty("stickBase").objectReferenceValue = stickBase;
+            joystick.FindProperty("knob").objectReferenceValue = knob;
+            joystick.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// The joystick gets its own canvas, sorted below every other one, so any button added later on a normal canvas
+        /// takes the press and the joystick never appears under it.
+        /// </summary>
+        private static Transform CreateJoystickCanvas()
+        {
+            var canvasObject = new GameObject("JoystickCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var canvas = canvasObject.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = JoystickCanvasSortOrder;
+
+            var scaler = canvasObject.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = UiReferenceResolution;
+            scaler.matchWidthOrHeight = 0.5f; // weigh width and height equally
+            return canvasObject.transform;
+        }
+
+        /// <summary>The full-screen, fully transparent element that catches presses; a transparent Image still receives raycasts.</summary>
+        private static GameObject CreateJoystickArea(Transform canvas)
+        {
+            var area = NewUiImage("TouchJoystick", canvas, null, Color.clear);
+            area.raycastTarget = true;
+            var rect = area.rectTransform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            return area.gameObject;
+        }
+
+        /// <summary>A UI Image that does not catch presses; the caller turns raycasts back on where it wants them.</summary>
+        private static Image NewUiImage(string name, Transform parent, Sprite sprite, Color color)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var image = go.GetComponent<Image>();
+            image.sprite = sprite;
+            image.color = color;
+            image.raycastTarget = false;
+            return image;
         }
 
         private static PrefabPool CreatePool(string name, GameObject prefab, int maxSize)
