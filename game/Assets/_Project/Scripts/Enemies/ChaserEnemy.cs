@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DungeonSurvivors.Rules;
 using UnityEngine;
 
@@ -14,6 +15,11 @@ namespace DungeonSurvivors
         [SerializeField, Min(1)] private int maxHealth = 10;
         [SerializeField, Min(0f)] private float moveSpeed = 2f;
         [SerializeField, Min(1)] private int contactDamage = 10;
+
+        private static readonly List<ChaserEnemy> active = new List<ChaserEnemy>();
+
+        /// <summary>Every enemy currently out of the pool, for weapons to aim at. Kept by OnEnable / OnDisable, so it never holds a pooled enemy.</summary>
+        public static IReadOnlyList<ChaserEnemy> Active => active;
 
         private Rigidbody2D body;
         private Transform target;
@@ -32,6 +38,12 @@ namespace DungeonSurvivors
         {
             health = new EnemyHealth(maxHealth);
             touchingPlayer = false;
+            active.Add(this);
+        }
+
+        private void OnDisable()
+        {
+            active.Remove(this);
         }
 
         /// <summary>Gives a freshly spawned enemy what it chases, which Run it reports to, and which pool to return to.</summary>
@@ -42,10 +54,13 @@ namespace DungeonSurvivors
             this.pool = pool;
         }
 
-        /// <summary>Called by weapons. Returns the enemy to its pool when the hit kills it.</summary>
+        /// <summary>Called by weapons. When the hit kills the enemy, reports the kill to the Run and returns the enemy to its pool.</summary>
         public void TakeHit(int damage)
         {
-            if (health.TakeDamage(damage)) pool.Release(gameObject);
+            if (!health.TakeDamage(damage)) return;
+
+            runHost.Run.RecordKill();
+            pool.Release(gameObject);
         }
 
         private void FixedUpdate()

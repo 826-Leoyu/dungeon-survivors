@@ -68,7 +68,7 @@ namespace DungeonSurvivors
         private void HandleEnd()
         {
             endHandled = true;
-            Debug.LogWarning($"[RunHost] Run over: {Run.Outcome} after {Run.ElapsedTime:F1}s");
+            Debug.LogWarning($"[RunHost] Run over: {Run.Outcome} after {Run.ElapsedTime:F1}s, {Run.Kills} kills");
             Time.timeScale = 0f;
         }
 

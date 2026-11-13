@@ -7,11 +7,11 @@ using UnityEngine;
 namespace DungeonSurvivors.EditorTools
 {
     /// <summary>
-    /// Builds the Playground test scene (player, walls, obstacles, following camera, Run, enemy spawning) from code,
+    /// Builds the Playground test scene (player, walls, obstacles, following camera, Run, enemy spawning, starting weapon) from code,
     /// so the scene is reproducible and reviewable instead of hand-assembled.
     /// Run from the menu, or in batch mode with
     /// <c>-executeMethod DungeonSurvivors.EditorTools.PlaygroundSceneBuilder.Build</c>.
-    /// Re-running overwrites the scene and the player and enemy prefabs, so tune values on the prefabs
+    /// Re-running overwrites the scene and the player, enemy and bullet prefabs, so tune values on the prefabs
     /// or change them here; manual edits to the generated scene are lost on the next rebuild.
     /// </summary>
     public static class PlaygroundSceneBuilder
@@ -21,12 +21,15 @@ namespace DungeonSurvivors.EditorTools
         private const string ScenePath = Root + "/Scenes/Playground.unity";
         private const string PrefabPath = Root + "/Prefabs/Player.prefab";
         private const string EnemyPrefabPath = Root + "/Prefabs/ChaserEnemy.prefab";
+        private const string BulletPrefabPath = Root + "/Prefabs/Bullet.prefab";
         private const string SpritePath = Root + "/Art/Placeholder/WhiteSquare.png";
         private const int SpriteSize = 16;
 
         // Much larger than the camera's view (about 18 x 10), so enemies spawned just off-screen are still inside the walls.
         private static readonly Vector2 ArenaSize = new Vector2(80f, 80f);
         private const int EnemyPoolSize = 300;
+        // Far more than the default fire rate keeps alive at once (lifetime / interval = 4); headroom for faster weapons.
+        private const int BulletPoolSize = 100;
         private const float WallThickness = 1f;
 
         [MenuItem("Dungeon Survivors/Rebuild Playground Scene")]
@@ -35,6 +38,7 @@ namespace DungeonSurvivors.EditorTools
             var sprite = CreatePlaceholderSprite();
             var playerPrefab = CreatePlayerPrefab(sprite);
             var enemyPrefab = CreateEnemyPrefab(sprite);
+            var bulletPrefab = CreateBulletPrefab(sprite);
 
             // Start from the URP 2D template scene so the camera and Global Light 2D are already set up.
             EnsureFolder(Path.GetDirectoryName(ScenePath));
@@ -51,7 +55,9 @@ namespace DungeonSurvivors.EditorTools
             follow.ApplyModifiedPropertiesWithoutUndo();
 
             BuildArena(sprite);
-            BuildEnemySpawning(enemyPrefab, player.transform, camera);
+            var runHost = new GameObject("RunHost").AddComponent<RunHost>();
+            BuildEnemySpawning(runHost, enemyPrefab, player.transform, camera);
+            BuildStartingWeapon(runHost, bulletPrefab, player.transform);
 
             EditorSceneManager.SaveScene(scene);
             SetAsFirstBuildScene(ScenePath);
@@ -84,60 +90,63 @@ namespace DungeonSurvivors.EditorTools
 
         private static GameObject CreatePlayerPrefab(Sprite sprite)
         {
-            EnsureFolder(Path.GetDirectoryName(PrefabPath));
-
-            var go = new GameObject("Player") { tag = "Player" };
-            var renderer = go.AddComponent<SpriteRenderer>();
-            renderer.sprite = sprite;
-            renderer.color = new Color(0.35f, 0.75f, 1f);
-            renderer.sortingOrder = 10;
-            go.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
-
-            // A circle slides along walls and around corners instead of catching on them like a box.
-            var collider = go.AddComponent<CircleCollider2D>();
-            collider.radius = 0.5f;
+            // A solid circle slides along walls and around corners instead of catching on them like a box.
+            var go = NewCircleSprite("Player", sprite, new Color(0.35f, 0.75f, 1f), sortingOrder: 10, size: 0.8f, isTrigger: false);
+            go.tag = "Player";
 
             go.AddComponent<PlayerMovement>(); // RequireComponent adds the Rigidbody2D
             PlayerMovement.ConfigureBody(go.GetComponent<Rigidbody2D>());
-
-            var prefab = PrefabUtility.SaveAsPrefabAsset(go, PrefabPath);
-            Object.DestroyImmediate(go);
-            return prefab;
+            return SaveAsPrefab(go, PrefabPath);
         }
 
         private static GameObject CreateEnemyPrefab(Sprite sprite)
         {
-            EnsureFolder(Path.GetDirectoryName(EnemyPrefabPath));
-
-            var go = new GameObject("ChaserEnemy");
-            var renderer = go.AddComponent<SpriteRenderer>();
-            renderer.sprite = sprite;
-            renderer.color = new Color(0.9f, 0.3f, 0.3f);
-            renderer.sortingOrder = 5; // under the player
-            go.transform.localScale = new Vector3(0.8f, 0.8f, 1f);
-
-            // A trigger reports touching the player without pushing it or blocking other enemies.
-            var collider = go.AddComponent<CircleCollider2D>();
-            collider.radius = 0.5f;
-            collider.isTrigger = true;
+            // A trigger reports touching the player without pushing it or blocking other enemies. Drawn under the player.
+            var go = NewCircleSprite("ChaserEnemy", sprite, new Color(0.9f, 0.3f, 0.3f), sortingOrder: 5, size: 0.8f, isTrigger: true);
 
             go.AddComponent<ChaserEnemy>(); // RequireComponent adds the Rigidbody2D
             ChaserEnemy.ConfigureBody(go.GetComponent<Rigidbody2D>());
+            return SaveAsPrefab(go, EnemyPrefabPath);
+        }
 
-            var prefab = PrefabUtility.SaveAsPrefabAsset(go, EnemyPrefabPath);
+        private static GameObject CreateBulletPrefab(Sprite sprite)
+        {
+            // A trigger, like the enemies, so it reports hits without pushing anything. Drawn over the player and enemies.
+            var go = NewCircleSprite("Bullet", sprite, new Color(1f, 0.9f, 0.3f), sortingOrder: 15, size: 0.3f, isTrigger: true);
+
+            go.AddComponent<Bullet>(); // RequireComponent adds the Rigidbody2D
+            Bullet.ConfigureBody(go.GetComponent<Rigidbody2D>());
+            return SaveAsPrefab(go, BulletPrefabPath);
+        }
+
+        /// <summary>A square placeholder sprite of <paramref name="size"/> world units with a circle collider filling it.</summary>
+        private static GameObject NewCircleSprite(string name, Sprite sprite, Color color, int sortingOrder, float size, bool isTrigger)
+        {
+            var go = new GameObject(name);
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = color;
+            renderer.sortingOrder = sortingOrder;
+            go.transform.localScale = new Vector3(size, size, 1f);
+
+            var collider = go.AddComponent<CircleCollider2D>();
+            collider.radius = 0.5f;
+            collider.isTrigger = isTrigger;
+            return go;
+        }
+
+        /// <summary>Saves the temporary scene object <paramref name="go"/> as a prefab asset, then destroys the object.</summary>
+        private static GameObject SaveAsPrefab(GameObject go, string path)
+        {
+            EnsureFolder(Path.GetDirectoryName(path));
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go);
             return prefab;
         }
 
-        private static void BuildEnemySpawning(GameObject enemyPrefab, Transform player, Camera camera)
+        private static void BuildEnemySpawning(RunHost runHost, GameObject enemyPrefab, Transform player, Camera camera)
         {
-            var runHost = new GameObject("RunHost").AddComponent<RunHost>();
-
-            var pool = new GameObject("EnemyPool").AddComponent<PrefabPool>();
-            var poolSettings = new SerializedObject(pool);
-            poolSettings.FindProperty("prefab").objectReferenceValue = enemyPrefab;
-            poolSettings.FindProperty("maxSize").intValue = EnemyPoolSize;
-            poolSettings.ApplyModifiedPropertiesWithoutUndo();
+            var pool = CreatePool("EnemyPool", enemyPrefab, EnemyPoolSize);
 
             var spawner = new SerializedObject(new GameObject("EnemySpawner").AddComponent<EnemySpawner>());
             spawner.FindProperty("runHost").objectReferenceValue = runHost;
@@ -145,6 +154,27 @@ namespace DungeonSurvivors.EditorTools
             spawner.FindProperty("target").objectReferenceValue = player;
             spawner.FindProperty("viewCamera").objectReferenceValue = camera;
             spawner.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void BuildStartingWeapon(RunHost runHost, GameObject bulletPrefab, Transform player)
+        {
+            var pool = CreatePool("BulletPool", bulletPrefab, BulletPoolSize);
+
+            var weapon = new SerializedObject(new GameObject("StraightShotWeapon").AddComponent<StraightShotWeapon>());
+            weapon.FindProperty("runHost").objectReferenceValue = runHost;
+            weapon.FindProperty("bulletPool").objectReferenceValue = pool;
+            weapon.FindProperty("shooter").objectReferenceValue = player;
+            weapon.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static PrefabPool CreatePool(string name, GameObject prefab, int maxSize)
+        {
+            var pool = new GameObject(name).AddComponent<PrefabPool>();
+            var settings = new SerializedObject(pool);
+            settings.FindProperty("prefab").objectReferenceValue = prefab;
+            settings.FindProperty("maxSize").intValue = maxSize;
+            settings.ApplyModifiedPropertiesWithoutUndo();
+            return pool;
         }
 
         private static void BuildArena(Sprite sprite)
