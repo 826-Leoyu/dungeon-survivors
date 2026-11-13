@@ -106,6 +106,16 @@ _Avoid_: Lock-on、aim assist
 触屏移动输入：手指在任意非 UI 区域按下时摇杆出现在按下点，拖动距离除以半径即力度（最大为 1），松手归零。由按下它的那根手指独占。规则在纯 C# 的 `FloatingStick`；表现层 `FloatingJoystick` 把值写进虚拟手柄左摇杆，所以 `Player/Move` 不区分设备。
 _Avoid_: 虚拟摇杆、VirtualJoystick、Thumbstick
 
+### 摄像机
+
+**可视面积（Visible area）**:
+屏幕上能看到的世界面积（平方单位）。无论横屏、竖屏或屏幕多长，都保持不变，让不同设备的难度接近；默认 177.8，即 16:9 屏幕在正交尺寸 5 时的 17.8 x 10。代码中为 `visibleArea`（`AdaptiveCamera` 的字段）；由它算出正交尺寸的规则是 `ViewFit.OrthographicSize`。
+_Avoid_: 视野、FOV、zoom
+
+**自适应摄像机（Adaptive camera）**:
+表现层组件 `AdaptiveCamera`：屏幕比例变化（改窗口大小、旋转手机）时，按可视面积重算正交摄像机尺寸。不强制旋转屏幕。
+_Avoid_: CameraScaler、ResponsiveCamera
+
 ## 命名约定
 
 - 规则层程序集：`DungeonSurvivors.Rules`，位于 `game/Assets/_Project/Scripts/Rules/`，命名空间 `DungeonSurvivors.Rules`，`noEngineReferences: true`。
