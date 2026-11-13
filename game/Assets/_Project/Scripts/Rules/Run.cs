@@ -18,6 +18,9 @@ namespace DungeonSurvivors.Rules
         /// <summary>Seconds of play so far: the player's survival time.</summary>
         public float ElapsedTime { get; private set; }
 
+        /// <summary>Enemies killed so far.</summary>
+        public int Kills { get; private set; }
+
         public RunOutcome Outcome { get; private set; } = RunOutcome.InProgress;
 
         /// <summary>Once over, the Run ignores every further event.</summary>
@@ -38,6 +41,13 @@ namespace DungeonSurvivors.Rules
 
             ElapsedTime += deltaTime;
             hurtCooldownRemaining -= deltaTime;
+        }
+
+        /// <summary>Reports that an enemy died. Ignored once the Run is over.</summary>
+        public void RecordKill()
+        {
+            if (IsOver) return;
+            Kills++;
         }
 
         /// <summary>Reports a hit on the player. Returns whether the damage was applied (false during the hurt cooldown or once the Run is over).</summary>

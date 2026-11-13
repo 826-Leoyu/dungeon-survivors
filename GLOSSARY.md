@@ -48,6 +48,10 @@ _Avoid_: 无敌帧、i-frames、invincibility
 表现层中持有本场景 Run 的组件：按 Inspector 数值创建 Run、每帧 Tick、Run 结束时处理结局（目前是日志加冻结画面）。其他组件通过它向 Run 报告事件。
 _Avoid_: GameManager、RunManager
 
+**击杀数（Kills）**:
+本局被杀死的敌人数量。敌人死亡时由表现层报告给 Run；Run 结束后的击杀被忽略。代码中为 `Run.Kills` / `Run.RecordKill`。
+_Avoid_: Score、kill count
+
 **结局（Outcome）**:
 Run 的胜负状态：进行中（`InProgress`）、失败（`Defeat`）；之后加入胜利。Run 结束后不再接受任何事件。
 _Avoid_: Result、State、GameOver
@@ -77,6 +81,24 @@ _Avoid_: 用 Spawner 指对象池或刷怪计时器
 **刷怪计时器（Spawn timer）**:
 按固定间隔给出该生成几个敌人；长帧不丢失生成次数。刷怪导演（W2）会取代固定间隔。代码中为 `SpawnTimer`。
 _Avoid_: Spawner、wave timer
+
+### 武器
+
+**直线弹幕（Straight shot）**:
+开局自带的武器：按固定射速从玩家位置朝最近的敌人发射子弹；没有敌人时不发射。代码中为 `StraightShotWeapon`。
+_Avoid_: Gun、Shooter、Projectile weapon
+
+**子弹（Bullet）**:
+武器发射的直线飞行物，从对象池取出；命中第一个敌人造成伤害后回收，飞行时间（lifetime）用完也回收。穿过墙和玩家。代码中为 `Bullet`。
+_Avoid_: Projectile、Shot、Missile
+
+**射击冷却（Fire cooldown）**:
+决定武器何时可以开火的规则：开火后需等待一个射击间隔；一开始就是就绪状态；就绪状态不累积，没有目标的时间不会攒成一串连发。代码中为 `FireCooldown`。与刷怪计时器不同，后者会补上长帧丢失的次数。
+_Avoid_: Fire timer、reload
+
+**最近目标（Nearest target）**:
+武器瞄准的敌人：离射击者最近的一个；距离相同时取列表中靠前的。代码中为 `NearestTarget`。
+_Avoid_: Lock-on、aim assist
 
 ## 命名约定
 
