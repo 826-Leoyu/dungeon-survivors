@@ -10,7 +10,7 @@ using UnityEngine.UI;
 namespace DungeonSurvivors.EditorTools
 {
     /// <summary>
-    /// Builds the Playground test scene (player, walls, obstacles, following camera, Run, enemy spawning, starting weapon,
+    /// Builds the Playground test scene (player, walls, obstacles, following adaptive camera, Run, enemy spawning, starting weapon,
     /// touch joystick) from code,
     /// so the scene is reproducible and reviewable instead of hand-assembled.
     /// Run from the menu, or in batch mode with
@@ -29,7 +29,7 @@ namespace DungeonSurvivors.EditorTools
         private const string SpritePath = Root + "/Art/Placeholder/WhiteSquare.png";
         private const int SpriteSize = 16;
 
-        // Much larger than the camera's view (about 18 x 10), so enemies spawned just off-screen are still inside the walls.
+        // Much larger than the camera's view (AdaptiveCamera's default visible area, about 18 x 10 turned either way), so enemies spawned just off-screen are still inside the walls.
         private static readonly Vector2 ArenaSize = new Vector2(80f, 80f);
         private const int EnemyPoolSize = 300;
         // Far more than the default fire rate keeps alive at once (lifetime / interval = 4); headroom for faster weapons.
@@ -65,6 +65,7 @@ namespace DungeonSurvivors.EditorTools
             var follow = new SerializedObject(camera.gameObject.AddComponent<CameraFollow>());
             follow.FindProperty("target").objectReferenceValue = player.transform;
             follow.ApplyModifiedPropertiesWithoutUndo();
+            camera.gameObject.AddComponent<AdaptiveCamera>();
 
             BuildArena(sprite);
             var runHost = new GameObject("RunHost").AddComponent<RunHost>();
