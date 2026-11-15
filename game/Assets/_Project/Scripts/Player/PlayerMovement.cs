@@ -3,11 +3,13 @@ using UnityEngine.InputSystem;
 
 namespace DungeonSurvivors
 {
+    /// <summary>Moves the player from the Player/Move action, at the speed in the Run's player config.</summary>
     [RequireComponent(typeof(Rigidbody2D))]
     public class PlayerMovement : MonoBehaviour
     {
-        [SerializeField, Min(0f)] private float moveSpeed = 5f;
+        [SerializeField] private RunHost runHost;
 
+        private float moveSpeed;
         private Rigidbody2D body;
         private InputAction moveAction;
         private Vector2 moveInput;
@@ -15,6 +17,7 @@ namespace DungeonSurvivors
         private void Awake()
         {
             body = GetComponent<Rigidbody2D>();
+            moveSpeed = runHost.Run.Config.Player.MoveSpeed;
             moveAction = InputSystem.actions.FindAction("Player/Move", throwIfNotFound: true);
         }
 

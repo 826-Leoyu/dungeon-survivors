@@ -6,7 +6,7 @@ namespace DungeonSurvivors
 {
     /// <summary>
     /// The starting weapon: at a fixed rate, fires a pooled bullet from the shooter straight at the nearest enemy.
-    /// Holds fire while there are no enemies, and stops once the Run is over.
+    /// Holds fire while there are no enemies, and stops once the Run is over. Its numbers come from the Run's starting-weapon config, read once at start.
     /// </summary>
     public class StraightShotWeapon : MonoBehaviour
     {
@@ -14,23 +14,14 @@ namespace DungeonSurvivors
         [SerializeField] private PrefabPool bulletPool;
         [SerializeField] private Transform shooter;
 
-        [SerializeField, Min(1)] private int damage = 5;
-
-        [Tooltip("Seconds between shots. Read once, at start.")]
-        [SerializeField, Min(0.01f)] private float fireInterval = 0.5f;
-
-        [Tooltip("World units per second.")]
-        [SerializeField, Min(0.1f)] private float bulletSpeed = 12f;
-
-        [Tooltip("Seconds before a bullet that hit nothing goes back to the pool. Its range is speed x lifetime.")]
-        [SerializeField, Min(0.1f)] private float bulletLifetime = 2f;
-
         private readonly List<(float X, float Y)> targetPositions = new List<(float X, float Y)>();
+        private WeaponConfig config;
         private FireCooldown cooldown;
 
         private void Awake()
         {
-            cooldown = new FireCooldown(fireInterval);
+            config = runHost.Run.Config.StartingWeapon;
+            cooldown = new FireCooldown(config.FireInterval);
         }
 
         private void Update()
@@ -70,7 +61,7 @@ namespace DungeonSurvivors
 
             // An enemy right on top of the shooter gives a zero direction: the bullet stays put, still overlaps the enemy, and hits it.
             var direction = (target - origin).normalized;
-            instance.GetComponent<Bullet>().Launch(direction * bulletSpeed, damage, bulletLifetime, bulletPool);
+            instance.GetComponent<Bullet>().Launch(direction * config.BulletSpeed, config.Damage, config.BulletLifetime, bulletPool);
         }
     }
 }
