@@ -2,21 +2,25 @@ using System;
 
 namespace DungeonSurvivors.Rules
 {
-    /// <summary>Tuning numbers for one Run, as plain data (the presentation layer converts ScriptableObjects into this).</summary>
+    /// <summary>
+    /// Tuning numbers for one Run, as plain data: the presentation layer converts ScriptableObjects into this at startup.
+    /// The Run uses the player's numbers itself; the presentation systems read the rest from <see cref="Run.Config"/>.
+    /// </summary>
     public sealed class RunConfig
     {
-        public int MaxHealth { get; }
+        public PlayerConfig Player { get; }
 
-        /// <summary>Seconds after taking damage during which further damage is ignored.</summary>
-        public float HurtCooldown { get; }
+        /// <summary>The chaser, the first kind of enemy.</summary>
+        public EnemyConfig Chaser { get; }
 
-        public RunConfig(int maxHealth, float hurtCooldown)
+        /// <summary>The weapon the player starts with: the straight shot.</summary>
+        public WeaponConfig StartingWeapon { get; }
+
+        public RunConfig(PlayerConfig player, EnemyConfig chaser, WeaponConfig startingWeapon)
         {
-            if (maxHealth <= 0) throw new ArgumentOutOfRangeException(nameof(maxHealth), maxHealth, "Must be positive.");
-            if (hurtCooldown < 0f) throw new ArgumentOutOfRangeException(nameof(hurtCooldown), hurtCooldown, "Must not be negative.");
-
-            MaxHealth = maxHealth;
-            HurtCooldown = hurtCooldown;
+            Player = player ?? throw new ArgumentNullException(nameof(player));
+            Chaser = chaser ?? throw new ArgumentNullException(nameof(chaser));
+            StartingWeapon = startingWeapon ?? throw new ArgumentNullException(nameof(startingWeapon));
         }
     }
 }
