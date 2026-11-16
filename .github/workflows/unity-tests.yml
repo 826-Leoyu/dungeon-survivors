@@ -24,13 +24,13 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           lfs: true
 
       # Unity's import cache. Without it every run re-imports all assets from scratch.
       - name: Restore the Library cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: game/Library
           key: Library-${{ hashFiles('game/Assets/**', 'game/Packages/**', 'game/ProjectSettings/**') }}
@@ -52,7 +52,7 @@ jobs:
 
       - name: Upload the test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: ${{ steps.tests.outputs.artifactsPath }}
