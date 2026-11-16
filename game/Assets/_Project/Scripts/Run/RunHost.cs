@@ -68,7 +68,7 @@ namespace DungeonSurvivors
             LogLevelUps();
         }
 
-        // Placeholder until the HUD (#17) and the level-up choice (#12): log each new level and how many level-ups are queued.
+        // Placeholder until the HUD (#17): log each new level and how many level-ups are queued.
         private void LogLevelUps()
         {
             if (Run.Level == loggedLevel) return;

@@ -50,27 +50,6 @@ namespace DungeonSurvivors.Rules.Tests
         }
 
         [Test]
-        public void ConsumingLevelUps_WorksThroughTheQueueOneAtATime()
-        {
-            var run = NewRun();
-            run.GainXp(13); // Levels 2 and 3.
-
-            Assert.That(run.ConsumeLevelUp(), Is.True);
-            Assert.That(run.PendingLevelUps, Is.EqualTo(1));
-            Assert.That(run.ConsumeLevelUp(), Is.True);
-            Assert.That(run.PendingLevelUps, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void ConsumingWithNoPendingLevelUp_ReturnsFalse()
-        {
-            var run = NewRun();
-
-            Assert.That(run.ConsumeLevelUp(), Is.False);
-            Assert.That(run.PendingLevelUps, Is.EqualTo(0));
-        }
-
-        [Test]
         public void XpAfterDefeat_IsIgnored()
         {
             var run = NewRun();

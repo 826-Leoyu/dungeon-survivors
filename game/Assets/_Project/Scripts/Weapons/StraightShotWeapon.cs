@@ -5,8 +5,10 @@ using UnityEngine;
 namespace DungeonSurvivors
 {
     /// <summary>
-    /// The starting weapon: at a fixed rate, fires a pooled bullet from the shooter straight at the nearest enemy.
-    /// Holds fire while there are no enemies, and stops once the Run is over. Its numbers come from the Run's starting-weapon config, read once at start.
+    /// The starting weapon: at a fixed rate, fires a volley of pooled bullets from the shooter at the nearest enemy, fanned out when there are several.
+    /// Holds fire while there are no enemies, while the game is frozen, and once the Run is over.
+    /// Damage, bullet count and fire rate come from the Run's <see cref="Rules.StraightShot"/>, read every frame so upgrades apply straight away;
+    /// the other numbers come from the starting-weapon config.
     /// </summary>
     public class StraightShotWeapon : MonoBehaviour
     {
@@ -16,24 +18,28 @@ namespace DungeonSurvivors
 
         private readonly List<(float X, float Y)> targetPositions = new List<(float X, float Y)>();
         private WeaponConfig config;
+        private StraightShot stats;
         private FireCooldown cooldown;
 
         private void Awake()
         {
             config = runHost.Run.Config.StartingWeapon;
-            cooldown = new FireCooldown(config.FireInterval);
+            stats = runHost.Run.StraightShot;
+            cooldown = new FireCooldown(stats.FireInterval);
         }
 
         private void Update()
         {
-            if (runHost.Run.IsOver) return;
+            // A frozen frame (level-up choice, pause) would otherwise fire a ready weapon and leave the bullets hanging in place.
+            if (runHost.Run.IsOver || Time.deltaTime <= 0f) return;
 
+            cooldown.Interval = stats.FireInterval;
             cooldown.Tick(Time.deltaTime);
 
             // Look for a target before spending the shot, so the weapon stays ready while there are no enemies.
             if (!TryFindNearestEnemy(out var enemy) || !cooldown.TryFire()) return;
 
-            FireAt(enemy.transform.position);
+            FireVolleyAt(enemy.transform.position);
         }
 
         private bool TryFindNearestEnemy(out ChaserEnemy nearest)
@@ -53,15 +59,27 @@ namespace DungeonSurvivors
             return nearest != null;
         }
 
-        // When the pool is at its cap the shot is skipped rather than creating more bullets.
-        private void FireAt(Vector2 target)
+        private void FireVolleyAt(Vector2 target)
         {
             var origin = (Vector2)shooter.position;
-            if (!bulletPool.TryGet(origin, out var instance)) return;
+            // An enemy right on top of the shooter gives a zero direction: the bullets stay put, still overlap the enemy, and hit it.
+            var aim = (target - origin).normalized;
 
-            // An enemy right on top of the shooter gives a zero direction: the bullet stays put, still overlaps the enemy, and hits it.
-            var direction = (target - origin).normalized;
-            instance.GetComponent<Bullet>().Launch(direction * config.BulletSpeed, config.Damage, config.BulletLifetime, bulletPool);
+            var count = stats.BulletCount;
+            for (var i = 0; i < count; i++)
+            {
+                var offset = Quaternion.Euler(0f, 0f, FanSpread.OffsetDegrees(i, count, config.SpreadDegrees));
+                if (!FireBullet(origin, offset * aim)) return;
+            }
+        }
+
+        // When the pool is at its cap the bullet is skipped rather than creating more. Returns false then, so the rest of the volley is skipped too.
+        private bool FireBullet(Vector2 origin, Vector2 direction)
+        {
+            if (!bulletPool.TryGet(origin, out var instance)) return false;
+
+            instance.GetComponent<Bullet>().Launch(direction * config.BulletSpeed, stats.Damage, config.BulletLifetime, bulletPool);
+            return true;
         }
     }
 }

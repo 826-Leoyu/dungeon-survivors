@@ -11,7 +11,7 @@ namespace DungeonSurvivors.EditorTools
 {
     /// <summary>
     /// Builds the Playground test scene (player, walls, obstacles, following adaptive camera, Run, enemy spawning with XP gem drops,
-    /// starting weapon, touch joystick) from code,
+    /// starting weapon, touch joystick, level-up choice panel) from code,
     /// so the scene is reproducible and reviewable instead of hand-assembled.
     /// Run from the menu, or in batch mode with
     /// <c>-executeMethod DungeonSurvivors.EditorTools.PlaygroundSceneBuilder.Build</c>.
@@ -52,6 +52,12 @@ namespace DungeonSurvivors.EditorTools
         private const float JoystickKnobSize = 70f;
         // Below every other canvas (default 0): overlay canvases with a higher sort order are hit first.
         private const int JoystickCanvasSortOrder = -100;
+        // Above the game UI, so the level-up choice covers it and takes every press while open.
+        private const int LevelUpCanvasSortOrder = 100;
+        private const int LevelUpOptionCount = Rules.Run.ChoicesPerLevelUp;
+        // Stacked vertically so the options fit a portrait phone as well as a landscape screen.
+        private static readonly Vector2 LevelUpOptionSize = new Vector2(720f, 180f);
+        private const float LevelUpOptionSpacing = 30f;
 
         [MenuItem("Dungeon Survivors/Rebuild Playground Scene")]
         public static void Build()
@@ -84,6 +90,7 @@ namespace DungeonSurvivors.EditorTools
             BuildEnemySpawning(runHost, enemyPrefab, gemPrefab, player.transform, camera);
             BuildStartingWeapon(runHost, bulletPrefab, player.transform);
             BuildTouchJoystick();
+            BuildLevelUpPanel(runHost);
 
             EditorSceneManager.SaveScene(scene);
             SetAsFirstBuildScene(ScenePath);
@@ -269,7 +276,8 @@ namespace DungeonSurvivors.EditorTools
             // Routes pointer and touch input to UI; with no actions assigned, the module uses the Input System's default UI actions.
             new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
 
-            var area = CreateJoystickArea(CreateJoystickCanvas());
+            // Below every other canvas, so any button on a normal canvas takes the press and the joystick never appears under it.
+            var area = CreateJoystickArea(CreateOverlayCanvas("JoystickCanvas", JoystickCanvasSortOrder));
 
             var circle = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
             var stickBase = NewUiImage("Base", area.transform, circle, new Color(1f, 1f, 1f, 0.25f)).rectTransform;
@@ -284,16 +292,13 @@ namespace DungeonSurvivors.EditorTools
             joystick.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        /// <summary>
-        /// The joystick gets its own canvas, sorted below every other one, so any button added later on a normal canvas
-        /// takes the press and the joystick never appears under it.
-        /// </summary>
-        private static Transform CreateJoystickCanvas()
+        /// <summary>A screen-space overlay canvas scaled from the reference resolution; higher <paramref name="sortOrder"/> draws on top and is hit first.</summary>
+        private static Transform CreateOverlayCanvas(string name, int sortOrder)
         {
-            var canvasObject = new GameObject("JoystickCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var canvasObject = new GameObject(name, typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             var canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = JoystickCanvasSortOrder;
+            canvas.sortingOrder = sortOrder;
 
             var scaler = canvasObject.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -307,12 +312,95 @@ namespace DungeonSurvivors.EditorTools
         {
             var area = NewUiImage("TouchJoystick", canvas, null, Color.clear);
             area.raycastTarget = true;
-            var rect = area.rectTransform;
+            Stretch(area.rectTransform);
+            return area.gameObject;
+        }
+
+        /// <summary>
+        /// The level-up choice: a dimmed full-screen panel, hidden until a level-up, with a title and one button per option stacked in the middle.
+        /// The dim backdrop catches presses, so taps on the panel never reach the joystick.
+        /// </summary>
+        private static void BuildLevelUpPanel(RunHost runHost)
+        {
+            var root = new GameObject("LevelUpPanel", typeof(RectTransform));
+            root.transform.SetParent(CreateOverlayCanvas("LevelUpCanvas", LevelUpCanvasSortOrder), false);
+            Stretch((RectTransform)root.transform);
+
+            var backdrop = NewUiImage("Panel", root.transform, null, new Color(0f, 0f, 0f, 0.6f));
+            backdrop.raycastTarget = true;
+            Stretch(backdrop.rectTransform);
+
+            var options = new GameObject("Options", typeof(RectTransform), typeof(VerticalLayoutGroup));
+            options.transform.SetParent(backdrop.transform, false);
+            var layout = options.GetComponent<VerticalLayoutGroup>();
+            layout.spacing = LevelUpOptionSpacing;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = layout.childControlHeight = false;
+            layout.childForceExpandWidth = layout.childForceExpandHeight = false;
+            Stretch((RectTransform)options.transform);
+
+            var title = NewUiText("Title", options.transform, "Level Up!", 64, Color.white);
+            title.rectTransform.sizeDelta = new Vector2(LevelUpOptionSize.x, 100f);
+
+            var buttons = new Button[LevelUpOptionCount];
+            var labels = new Text[LevelUpOptionCount];
+            for (var i = 0; i < LevelUpOptionCount; i++)
+            {
+                buttons[i] = NewOptionButton($"Option{i + 1}", options.transform, out labels[i]);
+            }
+
+            var panel = new SerializedObject(root.AddComponent<LevelUpPanel>());
+            panel.FindProperty("runHost").objectReferenceValue = runHost;
+            panel.FindProperty("panel").objectReferenceValue = backdrop.gameObject;
+            WireArray(panel.FindProperty("optionButtons"), buttons);
+            WireArray(panel.FindProperty("optionLabels"), labels);
+            panel.ApplyModifiedPropertiesWithoutUndo();
+
+            // Hidden in the saved scene too, so it never flashes on the first frame.
+            backdrop.gameObject.SetActive(false);
+        }
+
+        private static Button NewOptionButton(string name, Transform parent, out Text label)
+        {
+            var background = NewUiImage(name, parent, AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd"), Color.white);
+            background.type = Image.Type.Sliced;
+            background.raycastTarget = true;
+            background.rectTransform.sizeDelta = LevelUpOptionSize;
+            var button = background.gameObject.AddComponent<Button>();
+
+            label = NewUiText("Label", background.transform, name, 40, new Color(0.15f, 0.15f, 0.2f));
+            Stretch(label.rectTransform);
+            return button;
+        }
+
+        /// <summary>A centred UI Text that does not catch presses.</summary>
+        private static Text NewUiText(string name, Transform parent, string content, int fontSize, Color color)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Text));
+            go.transform.SetParent(parent, false);
+            var text = go.GetComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.text = content;
+            text.fontSize = fontSize;
+            text.color = color;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.raycastTarget = false;
+            return text;
+        }
+
+        /// <summary>Makes <paramref name="rect"/> fill its parent.</summary>
+        private static void Stretch(RectTransform rect)
+        {
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
-            return area.gameObject;
+        }
+
+        private static void WireArray(SerializedProperty array, Object[] values)
+        {
+            array.arraySize = values.Length;
+            for (var i = 0; i < values.Length; i++) array.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
         }
 
         /// <summary>A UI Image that does not catch presses; the caller turns raycasts back on where it wants them.</summary>
