@@ -44,6 +44,9 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          # The runner looks up the latest game-ci CLI release on the GitHub API; unauthenticated, that shares a small
+          # per-IP limit with every other job on the runner and fails with 403 now and then.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: game
           testMode: EditMode
@@ -55,4 +58,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: test-results
-          path: ${{ steps.tests.outputs.artifactsPath }}
+          # The output is empty when the test step fails before Unity starts; fall back to the default folder.
+          path: ${{ steps.tests.outputs.artifactsPath || 'artifacts' }}
+          if-no-files-found: ignore
