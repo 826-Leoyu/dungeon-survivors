@@ -15,6 +15,9 @@ namespace DungeonSurvivors
         [Tooltip("World units per second at full stick.")]
         [SerializeField, Min(0f)] private float moveSpeed = 5f;
 
-        public PlayerConfig ToConfig() => new PlayerConfig(maxHealth, hurtCooldown, moveSpeed);
+        [Tooltip("World units: an XP gem closer than this to the player is picked up.")]
+        [SerializeField, Min(0.01f)] private float pickupRadius = 1.5f;
+
+        public PlayerConfig ToConfig() => new PlayerConfig(maxHealth, hurtCooldown, moveSpeed, pickupRadius);
     }
 }

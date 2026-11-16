@@ -15,11 +15,13 @@ namespace DungeonSurvivors
         [SerializeField] private PlayerDefinition player;
         [SerializeField] private EnemyDefinition chaser;
         [SerializeField] private WeaponDefinition startingWeapon;
+        [SerializeField] private ProgressionDefinition progression;
 
         public RunConfig ToConfig() => new RunConfig(
             Required(player, nameof(player)).ToConfig(),
             Required(chaser, nameof(chaser)).ToConfig(),
-            Required(startingWeapon, nameof(startingWeapon)).ToConfig());
+            Required(startingWeapon, nameof(startingWeapon)).ToConfig(),
+            Required(progression, nameof(progression)).ToConfig());
 
         // Unity's == also catches a destroyed or missing asset, which ?? would let through.
         private T Required<T>(T definition, string field) where T : Object =>
