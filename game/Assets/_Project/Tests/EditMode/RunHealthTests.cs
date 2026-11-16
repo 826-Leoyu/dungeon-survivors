@@ -8,7 +8,15 @@ namespace DungeonSurvivors.Rules.Tests
         private const int MaxHealth = 100;
         private const float HurtCooldown = 0.5f;
 
-        private static Run NewRun() => new Run(new RunConfig(MaxHealth, HurtCooldown), new SeededRandom(1));
+        private static Run NewRun() => new Run(TestConfigs.Run(MaxHealth, HurtCooldown), new SeededRandom(1));
+
+        [Test]
+        public void NewRun_StartsAtPlayersMaxHealth()
+        {
+            var run = new Run(TestConfigs.Run(maxHealth: 42), new SeededRandom(1));
+
+            Assert.That(run.Health, Is.EqualTo(42));
+        }
 
         [Test]
         public void TakingDamage_ReducesHealth()

@@ -8,10 +8,12 @@ namespace DungeonSurvivors.Rules
     /// </summary>
     public sealed class Run
     {
-        private readonly RunConfig config;
         private readonly IRandom random;
 
         private float hurtCooldownRemaining;
+
+        /// <summary>The tuning numbers this Run was started with; presentation systems read their own numbers from here.</summary>
+        public RunConfig Config { get; }
 
         public int Health { get; private set; }
 
@@ -28,9 +30,9 @@ namespace DungeonSurvivors.Rules
 
         public Run(RunConfig config, IRandom random)
         {
-            this.config = config ?? throw new ArgumentNullException(nameof(config));
+            Config = config ?? throw new ArgumentNullException(nameof(config));
             this.random = random ?? throw new ArgumentNullException(nameof(random));
-            Health = config.MaxHealth;
+            Health = config.Player.MaxHealth;
         }
 
         /// <summary>Advances the Run's clock by <paramref name="deltaTime"/> seconds.</summary>
@@ -57,7 +59,7 @@ namespace DungeonSurvivors.Rules
             if (IsOver || hurtCooldownRemaining > 0f) return false;
 
             Health = Math.Max(0, Health - amount);
-            hurtCooldownRemaining = config.HurtCooldown;
+            hurtCooldownRemaining = Config.Player.HurtCooldown;
 
             if (Health <= 0) Outcome = RunOutcome.Defeat;
             return true;

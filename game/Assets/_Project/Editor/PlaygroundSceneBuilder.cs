@@ -15,8 +15,8 @@ namespace DungeonSurvivors.EditorTools
     /// so the scene is reproducible and reviewable instead of hand-assembled.
     /// Run from the menu, or in batch mode with
     /// <c>-executeMethod DungeonSurvivors.EditorTools.PlaygroundSceneBuilder.Build</c>.
-    /// Re-running overwrites the scene and the player, enemy and bullet prefabs, so tune values on the prefabs
-    /// or change them here; manual edits to the generated scene are lost on the next rebuild.
+    /// Re-running overwrites the scene and the player, enemy and bullet prefabs; manual edits to them are lost on the next rebuild.
+    /// Tuning numbers live in the definition assets under <c>Config/</c>, which are created only when missing, so a rebuild keeps them.
     /// </summary>
     public static class PlaygroundSceneBuilder
     {
@@ -27,6 +27,11 @@ namespace DungeonSurvivors.EditorTools
         private const string EnemyPrefabPath = Root + "/Prefabs/ChaserEnemy.prefab";
         private const string BulletPrefabPath = Root + "/Prefabs/Bullet.prefab";
         private const string SpritePath = Root + "/Art/Placeholder/WhiteSquare.png";
+        private const string ConfigFolder = Root + "/Config";
+        private const string RunDefinitionPath = ConfigFolder + "/Run.asset";
+        private const string PlayerDefinitionPath = ConfigFolder + "/Player.asset";
+        private const string ChaserDefinitionPath = ConfigFolder + "/ChaserEnemy.asset";
+        private const string StraightShotDefinitionPath = ConfigFolder + "/StraightShot.asset";
         private const int SpriteSize = 16;
 
         // Much larger than the camera's view (AdaptiveCamera's default visible area, about 18 x 10 turned either way), so enemies spawned just off-screen are still inside the walls.
@@ -68,7 +73,9 @@ namespace DungeonSurvivors.EditorTools
             camera.gameObject.AddComponent<AdaptiveCamera>();
 
             BuildArena(sprite);
-            var runHost = new GameObject("RunHost").AddComponent<RunHost>();
+            // Loaded only now: opening the scene in Single mode unloads assets loaded before it, which would wire a destroyed reference.
+            var runHost = BuildRunHost(LoadOrCreateRunDefinition());
+            Wire(player.GetComponent<PlayerMovement>(), "runHost", runHost);
             BuildEnemySpawning(runHost, enemyPrefab, player.transform, camera);
             BuildStartingWeapon(runHost, bulletPrefab, player.transform);
             BuildTouchJoystick();
@@ -156,6 +163,52 @@ namespace DungeonSurvivors.EditorTools
             var prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go);
             return prefab;
+        }
+
+        /// <summary>
+        /// Loads the Run definition, or creates it, with any missing player, enemy and weapon definitions at their code defaults.
+        /// Existing assets are left untouched so a rebuild keeps their tuning.
+        /// </summary>
+        private static RunDefinition LoadOrCreateRunDefinition()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<RunDefinition>(RunDefinitionPath);
+            if (existing != null) return existing;
+
+            var definition = new SerializedObject(CreateAsset<RunDefinition>(RunDefinitionPath));
+            definition.FindProperty("player").objectReferenceValue = LoadOrCreate<PlayerDefinition>(PlayerDefinitionPath);
+            definition.FindProperty("chaser").objectReferenceValue = LoadOrCreate<EnemyDefinition>(ChaserDefinitionPath);
+            definition.FindProperty("startingWeapon").objectReferenceValue = LoadOrCreate<WeaponDefinition>(StraightShotDefinitionPath);
+            definition.ApplyModifiedPropertiesWithoutUndo();
+            return (RunDefinition)definition.targetObject;
+        }
+
+        private static T LoadOrCreate<T>(string path) where T : ScriptableObject
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<T>(path);
+            return existing != null ? existing : CreateAsset<T>(path);
+        }
+
+        private static T CreateAsset<T>(string path) where T : ScriptableObject
+        {
+            EnsureFolder(Path.GetDirectoryName(path));
+            var asset = ScriptableObject.CreateInstance<T>();
+            AssetDatabase.CreateAsset(asset, path);
+            return asset;
+        }
+
+        private static RunHost BuildRunHost(RunDefinition definition)
+        {
+            var runHost = new GameObject("RunHost").AddComponent<RunHost>();
+            Wire(runHost, "definition", definition);
+            return runHost;
+        }
+
+        /// <summary>Sets one serialized object reference, as dragging it into the Inspector would.</summary>
+        private static void Wire(Object component, string field, Object value)
+        {
+            var serialized = new SerializedObject(component);
+            serialized.FindProperty(field).objectReferenceValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static void BuildEnemySpawning(RunHost runHost, GameObject enemyPrefab, Transform player, Camera camera)

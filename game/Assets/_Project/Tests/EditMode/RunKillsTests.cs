@@ -4,7 +4,7 @@ namespace DungeonSurvivors.Rules.Tests
 {
     public class RunKillsTests
     {
-        private static Run NewRun() => new Run(new RunConfig(maxHealth: 100, hurtCooldown: 0.5f), new SeededRandom(1));
+        private static Run NewRun() => new Run(TestConfigs.Run(), new SeededRandom(1));
 
         [Test]
         public void NewRun_HasNoKills()

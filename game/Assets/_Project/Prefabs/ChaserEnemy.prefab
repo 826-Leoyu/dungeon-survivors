@@ -170,6 +170,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: debace8c4def44589c6b926247987608, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonSurvivors.ChaserEnemy
-  maxHealth: 10
-  moveSpeed: 2
-  contactDamage: 10

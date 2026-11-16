@@ -7,7 +7,7 @@ namespace DungeonSurvivors.Rules.Tests
     {
         private const int MaxHealth = 100;
 
-        private static Run NewRun() => new Run(new RunConfig(MaxHealth, hurtCooldown: 0.5f), new SeededRandom(1));
+        private static Run NewRun() => new Run(TestConfigs.Run(MaxHealth), new SeededRandom(1));
 
         [Test]
         public void Tick_AdvancesElapsedTime()

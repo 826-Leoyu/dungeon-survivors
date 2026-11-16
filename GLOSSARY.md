@@ -29,8 +29,16 @@ _Avoid_: Return、Despawn、Recycle
 _Avoid_: Game、Session、Match、Round
 
 **Run 配置（RunConfig）**:
-一局使用的数值（最大生命值、受伤间隔等）的普通数据；由表现层从 ScriptableObject 转换而来。
+一局使用的全部数值的普通数据，包含玩家配置、敌人配置（目前只有追踪型敌人 `Chaser`）和开局武器配置（`StartingWeapon`）。由 RunHost 在 Run 开始时从 Run 定义转换而来；Run 自己用玩家的数值，表现层组件从 `Run.Config` 读取各自的数值。
 _Avoid_: Settings、Params
+
+**玩家 / 敌人 / 武器配置（PlayerConfig / EnemyConfig / WeaponConfig）**:
+规则层中某一对象数值的不可变普通数据，构造时拒绝非法数值。玩家：最大生命值、受伤间隔、移动速度；敌人：生命值、移动速度、接触伤害；武器：伤害、射击间隔、子弹速度、子弹飞行时间。
+_Avoid_: Stats、Settings
+
+**定义（Definition）**:
+在编辑器中调整数值的 ScriptableObject 资产（`PlayerDefinition`、`EnemyDefinition`、`WeaponDefinition`，以及把它们组合在一起的 `RunDefinition`），各自用 `ToConfig()` 转换为对应的配置。放在 `Assets/_Project/Config/`；只在 Run 开始时读取一次，所以修改后下次运行生效。规则层不引用定义。
+_Avoid_: Data、Preset、Template、用「配置」指 ScriptableObject
 
 **Tick**:
 由调用方推进 Run 时钟的一步，参数为经过的秒数；Run 自己从不读取时钟。
@@ -45,7 +53,7 @@ _Avoid_: 游戏时间、timer
 _Avoid_: 无敌帧、i-frames、invincibility
 
 **RunHost**:
-表现层中持有本场景 Run 的组件：按 Inspector 数值创建 Run、每帧 Tick、Run 结束时处理结局（目前是日志加冻结画面）。其他组件通过它向 Run 报告事件。
+表现层中持有本场景 Run 的组件：按 Run 定义创建 Run、每帧 Tick、Run 结束时处理结局（目前是日志加冻结画面）。其他组件通过它向 Run 报告事件。
 _Avoid_: GameManager、RunManager
 
 **击杀数（Kills）**:
@@ -123,3 +131,4 @@ _Avoid_: CameraScaler、ResponsiveCamera
 - 测试类按被测规则命名 `Run<规则>Tests`（如 `RunHealthTests`）；不属于 Run 的规则类型用 `<类型>Tests`（如 `EnemyHealthTests`），测试方法写成「情境_结果」（如 `DamageWithinHurtCooldown_IsIgnored`）。
 - 对象池程序集：`DungeonSurvivors.Pooling`，位于 `game/Assets/_Project/Scripts/Pooling/Core/`，`noEngineReferences: true`；测试程序集 `DungeonSurvivors.Pooling.Tests` 位于 `game/Assets/_Project/Tests/EditMode/Pooling/`。GameObject 适配层 `PrefabPool` 在 `Scripts/Pooling/` 下（不属于该程序集）。
 - 新规则（经验、升级抽取、刷怪导演、胜负、计分）加入同一程序集，并自带测试。
+- 数值配置：规则层的普通数据命名为 `<对象>Config`，放在 `Scripts/Rules/`；对应的 ScriptableObject 命名为 `<对象>Definition`，脚本放在 `Scripts/Config/`，资产放在 `Assets/_Project/Config/`。之后新增的武器、敌人、升级、刷怪曲线都按此方式配置。

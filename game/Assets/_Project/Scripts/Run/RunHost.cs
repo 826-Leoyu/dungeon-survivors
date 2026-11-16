@@ -5,15 +5,14 @@ using UnityEngine;
 namespace DungeonSurvivors
 {
     /// <summary>
-    /// Owns the scene's <see cref="Rules.Run"/>: builds it from the Inspector numbers, ticks it every frame, and reacts when it ends.
-    /// Other components report events to <see cref="Run"/> and read its state; they never decide rules themselves.
+    /// Owns the scene's <see cref="Rules.Run"/>: builds it from the Run definition, ticks it every frame, and reacts when it ends.
+    /// Other components report events to <see cref="Run"/>, read its state, and read their tuning numbers from <see cref="Rules.Run.Config"/>;
+    /// they never decide rules themselves.
     /// </summary>
     public class RunHost : MonoBehaviour
     {
-        [SerializeField, Min(1)] private int maxHealth = 100;
-
-        [Tooltip("Seconds after taking damage during which further damage is ignored.")]
-        [SerializeField, Min(0f)] private float hurtCooldown = 0.5f;
+        [Tooltip("The tuning numbers for this Run. Read once, when the Run starts.")]
+        [SerializeField] private RunDefinition definition;
 
         [Tooltip("Seed for this Run's randomness. 0 picks a new seed every play, logged so a Run can be replayed.")]
         [SerializeField] private int seed;
@@ -46,11 +45,14 @@ namespace DungeonSurvivors
         {
             if (run != null) return;
 
+            if (definition == null) throw new InvalidOperationException($"{name} has no Run definition assigned.");
+            var config = definition.ToConfig();
+
             var actualSeed = seed != 0 ? seed : Environment.TickCount;
             Debug.Log($"[RunHost] Starting Run with seed {actualSeed}");
 
             random = new SeededRandom(actualSeed);
-            run = new Run(new RunConfig(maxHealth, hurtCooldown), random);
+            run = new Run(config, random);
         }
 
         private void Update()
