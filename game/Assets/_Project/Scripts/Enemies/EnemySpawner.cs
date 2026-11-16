@@ -11,6 +11,8 @@ namespace DungeonSurvivors
     {
         [SerializeField] private RunHost runHost;
         [SerializeField] private PrefabPool pool;
+        [Tooltip("Where the XP gems that enemies drop come from.")]
+        [SerializeField] private PrefabPool gemPool;
         [SerializeField] private Transform target;
         [SerializeField] private Camera viewCamera;
 
@@ -49,7 +51,7 @@ namespace DungeonSurvivors
             var centre = viewCamera.transform.position;
             if (!pool.TryGet(new Vector3(centre.x + x, centre.y + y, 0f), out var instance)) return false;
 
-            instance.GetComponent<ChaserEnemy>().Init(target, runHost, pool);
+            instance.GetComponent<ChaserEnemy>().Init(target, runHost, pool, gemPool);
             return true;
         }
 

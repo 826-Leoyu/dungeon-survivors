@@ -10,12 +10,12 @@ using UnityEngine.UI;
 namespace DungeonSurvivors.EditorTools
 {
     /// <summary>
-    /// Builds the Playground test scene (player, walls, obstacles, following adaptive camera, Run, enemy spawning, starting weapon,
-    /// touch joystick) from code,
+    /// Builds the Playground test scene (player, walls, obstacles, following adaptive camera, Run, enemy spawning with XP gem drops,
+    /// starting weapon, touch joystick) from code,
     /// so the scene is reproducible and reviewable instead of hand-assembled.
     /// Run from the menu, or in batch mode with
     /// <c>-executeMethod DungeonSurvivors.EditorTools.PlaygroundSceneBuilder.Build</c>.
-    /// Re-running overwrites the scene and the player, enemy and bullet prefabs; manual edits to them are lost on the next rebuild.
+    /// Re-running overwrites the scene and the player, enemy, bullet and XP gem prefabs; manual edits to them are lost on the next rebuild.
     /// Tuning numbers live in the definition assets under <c>Config/</c>, which are created only when missing, so a rebuild keeps them.
     /// </summary>
     public static class PlaygroundSceneBuilder
@@ -26,12 +26,14 @@ namespace DungeonSurvivors.EditorTools
         private const string PrefabPath = Root + "/Prefabs/Player.prefab";
         private const string EnemyPrefabPath = Root + "/Prefabs/ChaserEnemy.prefab";
         private const string BulletPrefabPath = Root + "/Prefabs/Bullet.prefab";
+        private const string GemPrefabPath = Root + "/Prefabs/XpGem.prefab";
         private const string SpritePath = Root + "/Art/Placeholder/WhiteSquare.png";
         private const string ConfigFolder = Root + "/Config";
         private const string RunDefinitionPath = ConfigFolder + "/Run.asset";
         private const string PlayerDefinitionPath = ConfigFolder + "/Player.asset";
         private const string ChaserDefinitionPath = ConfigFolder + "/ChaserEnemy.asset";
         private const string StraightShotDefinitionPath = ConfigFolder + "/StraightShot.asset";
+        private const string ProgressionDefinitionPath = ConfigFolder + "/Progression.asset";
         private const int SpriteSize = 16;
 
         // Much larger than the camera's view (AdaptiveCamera's default visible area, about 18 x 10 turned either way), so enemies spawned just off-screen are still inside the walls.
@@ -39,6 +41,8 @@ namespace DungeonSurvivors.EditorTools
         private const int EnemyPoolSize = 300;
         // Far more than the default fire rate keeps alive at once (lifetime / interval = 4); headroom for faster weapons.
         private const int BulletPoolSize = 100;
+        // Gems wait on the floor until picked up, so they pile up faster than enemies; at the cap new drops are skipped.
+        private const int GemPoolSize = 500;
         private const float WallThickness = 1f;
 
         // Canvas scaler reference: a landscape 1080p screen, matching width and height equally so portrait phones get a similar size.
@@ -56,6 +60,7 @@ namespace DungeonSurvivors.EditorTools
             var playerPrefab = CreatePlayerPrefab(sprite);
             var enemyPrefab = CreateEnemyPrefab(sprite);
             var bulletPrefab = CreateBulletPrefab(sprite);
+            var gemPrefab = CreateGemPrefab(sprite);
 
             // Start from the URP 2D template scene so the camera and Global Light 2D are already set up.
             EnsureFolder(Path.GetDirectoryName(ScenePath));
@@ -76,7 +81,7 @@ namespace DungeonSurvivors.EditorTools
             // Loaded only now: opening the scene in Single mode unloads assets loaded before it, which would wire a destroyed reference.
             var runHost = BuildRunHost(LoadOrCreateRunDefinition());
             Wire(player.GetComponent<PlayerMovement>(), "runHost", runHost);
-            BuildEnemySpawning(runHost, enemyPrefab, player.transform, camera);
+            BuildEnemySpawning(runHost, enemyPrefab, gemPrefab, player.transform, camera);
             BuildStartingWeapon(runHost, bulletPrefab, player.transform);
             BuildTouchJoystick();
 
@@ -140,6 +145,21 @@ namespace DungeonSurvivors.EditorTools
             return SaveAsPrefab(go, BulletPrefabPath);
         }
 
+        private static GameObject CreateGemPrefab(Sprite sprite)
+        {
+            // No collider: the gem checks its distance to the player itself. A small diamond drawn under the enemies.
+            var go = new GameObject("XpGem");
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = new Color(0.3f, 1f, 0.5f);
+            renderer.sortingOrder = 2;
+            go.transform.localScale = new Vector3(0.3f, 0.3f, 1f);
+            go.transform.rotation = Quaternion.Euler(0f, 0f, 45f);
+
+            go.AddComponent<XpGem>();
+            return SaveAsPrefab(go, GemPrefabPath);
+        }
+
         /// <summary>A square placeholder sprite of <paramref name="size"/> world units with a circle collider filling it.</summary>
         private static GameObject NewCircleSprite(string name, Sprite sprite, Color color, int sortingOrder, float size, bool isTrigger)
         {
@@ -166,20 +186,28 @@ namespace DungeonSurvivors.EditorTools
         }
 
         /// <summary>
-        /// Loads the Run definition, or creates it, with any missing player, enemy and weapon definitions at their code defaults.
-        /// Existing assets are left untouched so a rebuild keeps their tuning.
+        /// Loads the Run definition, or creates it, and fills any of its empty slots (player, enemy, weapon, progression) with the
+        /// definition at its usual path, created at its code defaults when missing. Assigned slots and existing assets are left untouched,
+        /// so a rebuild keeps their tuning and a Run definition from before a slot existed gets it filled.
         /// </summary>
         private static RunDefinition LoadOrCreateRunDefinition()
         {
-            var existing = AssetDatabase.LoadAssetAtPath<RunDefinition>(RunDefinitionPath);
-            if (existing != null) return existing;
+            var runDefinition = AssetDatabase.LoadAssetAtPath<RunDefinition>(RunDefinitionPath);
+            if (runDefinition == null) runDefinition = CreateAsset<RunDefinition>(RunDefinitionPath);
 
-            var definition = new SerializedObject(CreateAsset<RunDefinition>(RunDefinitionPath));
-            definition.FindProperty("player").objectReferenceValue = LoadOrCreate<PlayerDefinition>(PlayerDefinitionPath);
-            definition.FindProperty("chaser").objectReferenceValue = LoadOrCreate<EnemyDefinition>(ChaserDefinitionPath);
-            definition.FindProperty("startingWeapon").objectReferenceValue = LoadOrCreate<WeaponDefinition>(StraightShotDefinitionPath);
-            definition.ApplyModifiedPropertiesWithoutUndo();
-            return (RunDefinition)definition.targetObject;
+            var definition = new SerializedObject(runDefinition);
+            FillIfEmpty<PlayerDefinition>(definition, "player", PlayerDefinitionPath);
+            FillIfEmpty<EnemyDefinition>(definition, "chaser", ChaserDefinitionPath);
+            FillIfEmpty<WeaponDefinition>(definition, "startingWeapon", StraightShotDefinitionPath);
+            FillIfEmpty<ProgressionDefinition>(definition, "progression", ProgressionDefinitionPath);
+            if (definition.ApplyModifiedPropertiesWithoutUndo()) EditorUtility.SetDirty(runDefinition);
+            return runDefinition;
+        }
+
+        private static void FillIfEmpty<T>(SerializedObject definition, string field, string path) where T : ScriptableObject
+        {
+            var slot = definition.FindProperty(field);
+            if (slot.objectReferenceValue == null) slot.objectReferenceValue = LoadOrCreate<T>(path);
         }
 
         private static T LoadOrCreate<T>(string path) where T : ScriptableObject
@@ -211,13 +239,15 @@ namespace DungeonSurvivors.EditorTools
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private static void BuildEnemySpawning(RunHost runHost, GameObject enemyPrefab, Transform player, Camera camera)
+        private static void BuildEnemySpawning(RunHost runHost, GameObject enemyPrefab, GameObject gemPrefab, Transform player, Camera camera)
         {
             var pool = CreatePool("EnemyPool", enemyPrefab, EnemyPoolSize);
+            var gemPool = CreatePool("XpGemPool", gemPrefab, GemPoolSize);
 
             var spawner = new SerializedObject(new GameObject("EnemySpawner").AddComponent<EnemySpawner>());
             spawner.FindProperty("runHost").objectReferenceValue = runHost;
             spawner.FindProperty("pool").objectReferenceValue = pool;
+            spawner.FindProperty("gemPool").objectReferenceValue = gemPool;
             spawner.FindProperty("target").objectReferenceValue = player;
             spawner.FindProperty("viewCamera").objectReferenceValue = camera;
             spawner.ApplyModifiedPropertiesWithoutUndo();

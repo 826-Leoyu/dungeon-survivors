@@ -20,6 +20,7 @@ namespace DungeonSurvivors
         private Run run;
         private IRandom random;
         private bool endHandled;
+        private int loggedLevel = 1;
 
         // Built on first use rather than in Awake, so other scripts can use the Run from their own Awake regardless of execution order.
         public Run Run
@@ -64,13 +65,22 @@ namespace DungeonSurvivors
             }
 
             Run.Tick(Time.deltaTime);
+            LogLevelUps();
+        }
+
+        // Placeholder until the HUD (#17) and the level-up choice (#12): log each new level and how many level-ups are queued.
+        private void LogLevelUps()
+        {
+            if (Run.Level == loggedLevel) return;
+            loggedLevel = Run.Level;
+            Debug.Log($"[RunHost] Reached level {Run.Level} ({Run.PendingLevelUps} level-ups pending, next level at {Run.XpToNextLevel} XP)");
         }
 
         // Placeholder until the game-over flow (#18): log the result and freeze the game.
         private void HandleEnd()
         {
             endHandled = true;
-            Debug.LogWarning($"[RunHost] Run over: {Run.Outcome} after {Run.ElapsedTime:F1}s, {Run.Kills} kills");
+            Debug.LogWarning($"[RunHost] Run over: {Run.Outcome} after {Run.ElapsedTime:F1}s, {Run.Kills} kills, level {Run.Level}");
             Time.timeScale = 0f;
         }
 
