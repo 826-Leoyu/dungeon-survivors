@@ -18,14 +18,14 @@ namespace DungeonSurvivors
 
         private readonly List<(float X, float Y)> targetPositions = new List<(float X, float Y)>();
         private WeaponConfig config;
-        private StraightShot stats;
+        private StraightShot current;
         private FireCooldown cooldown;
 
         private void Awake()
         {
             config = runHost.Run.Config.StartingWeapon;
-            stats = runHost.Run.StraightShot;
-            cooldown = new FireCooldown(stats.FireInterval);
+            current = runHost.Run.StraightShot;
+            cooldown = new FireCooldown(current.FireInterval);
         }
 
         private void Update()
@@ -33,7 +33,7 @@ namespace DungeonSurvivors
             // A frozen frame (level-up choice, pause) would otherwise fire a ready weapon and leave the bullets hanging in place.
             if (runHost.Run.IsOver || Time.deltaTime <= 0f) return;
 
-            cooldown.Interval = stats.FireInterval;
+            cooldown.Interval = current.FireInterval;
             cooldown.Tick(Time.deltaTime);
 
             // Look for a target before spending the shot, so the weapon stays ready while there are no enemies.
@@ -65,7 +65,7 @@ namespace DungeonSurvivors
             // An enemy right on top of the shooter gives a zero direction: the bullets stay put, still overlap the enemy, and hit it.
             var aim = (target - origin).normalized;
 
-            var count = stats.BulletCount;
+            var count = current.BulletCount;
             for (var i = 0; i < count; i++)
             {
                 var offset = Quaternion.Euler(0f, 0f, FanSpread.OffsetDegrees(i, count, config.SpreadDegrees));
@@ -78,7 +78,7 @@ namespace DungeonSurvivors
         {
             if (!bulletPool.TryGet(origin, out var instance)) return false;
 
-            instance.GetComponent<Bullet>().Launch(direction * config.BulletSpeed, stats.Damage, config.BulletLifetime, bulletPool);
+            instance.GetComponent<Bullet>().Launch(direction * config.BulletSpeed, current.Damage, config.BulletLifetime, bulletPool);
             return true;
         }
     }

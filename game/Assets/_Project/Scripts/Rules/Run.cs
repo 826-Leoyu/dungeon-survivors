@@ -13,7 +13,7 @@ namespace DungeonSurvivors.Rules
         public const int ChoicesPerLevelUp = 3;
 
         private readonly IRandom random;
-        private readonly List<Upgrade> pool = new List<Upgrade>();
+        private readonly List<Upgrade> availableUpgrades = new List<Upgrade>();
         private List<Upgrade> choices = new List<Upgrade>();
 
         private float hurtCooldownRemaining;
@@ -50,7 +50,7 @@ namespace DungeonSurvivors.Rules
         /// </summary>
         public IReadOnlyList<Upgrade> UpgradeChoices => choices;
 
-        /// <summary>The starting weapon's current stats, raised by the upgrades picked so far.</summary>
+        /// <summary>The starting weapon's current numbers, raised by the upgrades picked so far.</summary>
         public StraightShot StraightShot { get; }
 
         public RunOutcome Outcome { get; private set; } = RunOutcome.InProgress;
@@ -109,8 +109,8 @@ namespace DungeonSurvivors.Rules
         /// </summary>
         public void ChooseUpgrade(Upgrade upgrade)
         {
-            if (!choices.Contains(upgrade)) throw new ArgumentException($"{upgrade} is not one of the current choices.", nameof(upgrade));
             if (IsOver) return;
+            if (!choices.Contains(upgrade)) throw new ArgumentException($"{upgrade} is not one of the current choices.", nameof(upgrade));
 
             StraightShot.Apply(upgrade);
             PendingLevelUps--;
@@ -122,15 +122,15 @@ namespace DungeonSurvivors.Rules
         // so the pending level-ups are dropped rather than showing an empty choice.
         private void DrawChoices()
         {
-            pool.Clear();
-            StraightShot.AddAvailableUpgrades(pool);
-            if (pool.Count == 0)
+            availableUpgrades.Clear();
+            StraightShot.AddAvailableUpgrades(availableUpgrades);
+            if (availableUpgrades.Count == 0)
             {
                 PendingLevelUps = 0;
                 return;
             }
 
-            choices = DistinctDraw.Pick(pool, ChoicesPerLevelUp, random);
+            choices = DistinctDraw.Pick(availableUpgrades, ChoicesPerLevelUp, random);
         }
 
         /// <summary>Reports a hit on the player. Returns whether the damage was applied (false during the hurt cooldown or once the Run is over).</summary>

@@ -185,6 +185,15 @@ namespace DungeonSurvivors.Rules.Tests
         }
 
         [Test]
+        public void ChoosingAnUpgradeNotOfferedAfterDefeat_IsIgnoredRatherThanRejected()
+        {
+            var run = LevelledRun(upgrades: TestConfigs.Upgrades(maxBulletCountLevel: 0));
+            run.TakeDamage(100);
+
+            Assert.DoesNotThrow(() => run.ChooseUpgrade(Upgrade.StraightShotBulletCount));
+        }
+
+        [Test]
         public void SameSeed_OffersTheSameChoices()
         {
             var first = LevelledRun();

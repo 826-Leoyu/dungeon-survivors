@@ -4,11 +4,14 @@ using System.Collections.Generic;
 namespace DungeonSurvivors.Rules
 {
     /// <summary>
-    /// The straight shot's current stats: its starting numbers raised by the upgrades picked so far.
+    /// The straight shot's current numbers: its starting numbers raised by the upgrades picked so far.
     /// The weapon reads these every frame, so a pick takes effect straight away.
     /// </summary>
     public sealed class StraightShot
     {
+        /// <summary>Every upgrade this weapon offers.</summary>
+        public static readonly IReadOnlyList<Upgrade> Upgrades = new[] { Upgrade.StraightShotDamage, Upgrade.StraightShotBulletCount, Upgrade.StraightShotFireRate };
+
         private readonly WeaponConfig config;
         private int damageLevel;
         private int bulletCountLevel;
@@ -28,7 +31,7 @@ namespace DungeonSurvivors.Rules
         /// <summary>Seconds between volleys.</summary>
         public float FireInterval => config.FireInterval * (float)Math.Pow(config.Upgrades.FireIntervalMultiplier, fireRateLevel);
 
-        /// <summary>Raises the stat <paramref name="upgrade"/> belongs to by one level. The caller checks it is not maxed.</summary>
+        /// <summary>Raises the number <paramref name="upgrade"/> belongs to by one level. The caller checks it is not maxed.</summary>
         internal void Apply(Upgrade upgrade)
         {
             switch (upgrade)
@@ -43,7 +46,8 @@ namespace DungeonSurvivors.Rules
         /// <summary>Upgrades of this weapon that are not yet at their max level.</summary>
         internal void AddAvailableUpgrades(List<Upgrade> pool)
         {
-            foreach (Upgrade upgrade in Enum.GetValues(typeof(Upgrade)))
+            // Only this weapon's own upgrades: other weapons' upgrades share the enum.
+            foreach (var upgrade in Upgrades)
             {
                 if (LevelOf(upgrade) < MaxLevelOf(upgrade)) pool.Add(upgrade);
             }

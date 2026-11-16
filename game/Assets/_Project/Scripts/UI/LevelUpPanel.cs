@@ -31,6 +31,8 @@ namespace DungeonSurvivors
 
         private bool isOpen;
         private float acceptInputAt;
+        // Restored on close rather than forcing 1, so a choice never undoes a freeze someone else set (pause, end of Run).
+        private float timeScaleBeforeOpen = 1f;
 
         private Run Run => runHost.Run;
 
@@ -48,13 +50,21 @@ namespace DungeonSurvivors
         // Update still runs while the time scale is 0, so the panel keeps reading input while the game is frozen.
         private void Update()
         {
-            if (!isOpen && Run.UpgradeChoices.Count > 0 && !Run.IsOver) Open();
+            if (Run.IsOver)
+            {
+                // The Run ignores picks once it is over, so the choice could never close; the end-of-Run flow owns the screen now.
+                if (isOpen) Hide();
+                return;
+            }
+
+            if (!isOpen && Run.UpgradeChoices.Count > 0) Open();
             if (isOpen) ReadOptionKeys();
         }
 
         private void Open()
         {
             isOpen = true;
+            timeScaleBeforeOpen = Time.timeScale;
             Time.timeScale = 0f;
             panel.SetActive(true);
             ShowChoices();
@@ -62,9 +72,15 @@ namespace DungeonSurvivors
 
         private void Close()
         {
+            Hide();
+            Time.timeScale = timeScaleBeforeOpen;
+        }
+
+        // Hides the panel without touching the time scale.
+        private void Hide()
+        {
             isOpen = false;
             panel.SetActive(false);
-            Time.timeScale = 1f;
         }
 
         private void ShowChoices()
@@ -103,16 +119,16 @@ namespace DungeonSurvivors
 
         private string Describe(Upgrade upgrade)
         {
-            var stats = Run.StraightShot;
-            var numbers = Run.Config.StartingWeapon.Upgrades;
-            var level = $"Lv {stats.LevelOf(upgrade) + 1}/{stats.MaxLevelOf(upgrade)}";
+            var weapon = Run.StraightShot;
+            var upgradeNumbers = Run.Config.StartingWeapon.Upgrades;
+            var level = $"Lv {weapon.LevelOf(upgrade) + 1}/{weapon.MaxLevelOf(upgrade)}";
 
             return upgrade switch
             {
-                Upgrade.StraightShotDamage => $"Straight Shot\nDamage +{numbers.DamagePerLevel}\n{level}",
+                Upgrade.StraightShotDamage => $"Straight Shot\nDamage +{upgradeNumbers.DamagePerLevel}\n{level}",
                 Upgrade.StraightShotBulletCount => $"Straight Shot\n+1 bullet\n{level}",
                 Upgrade.StraightShotFireRate =>
-                    $"Straight Shot\nFires {Mathf.RoundToInt((1f - numbers.FireIntervalMultiplier) * 100f)}% sooner\n{level}",
+                    $"Straight Shot\nFires {Mathf.RoundToInt((1f - upgradeNumbers.FireIntervalMultiplier) * 100f)}% sooner\n{level}",
                 _ => upgrade.ToString(),
             };
         }
@@ -120,7 +136,7 @@ namespace DungeonSurvivors
         private void OnDestroy()
         {
             // Time scale is global and outlives this scene, so undo the freeze.
-            if (isOpen) Time.timeScale = 1f;
+            if (isOpen) Time.timeScale = timeScaleBeforeOpen;
         }
     }
 }
