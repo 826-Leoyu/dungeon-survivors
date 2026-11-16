@@ -56,7 +56,6 @@ namespace DungeonSurvivors.EditorTools
             var playerPrefab = CreatePlayerPrefab(sprite);
             var enemyPrefab = CreateEnemyPrefab(sprite);
             var bulletPrefab = CreateBulletPrefab(sprite);
-            var runDefinition = LoadOrCreateRunDefinition();
 
             // Start from the URP 2D template scene so the camera and Global Light 2D are already set up.
             EnsureFolder(Path.GetDirectoryName(ScenePath));
@@ -74,7 +73,8 @@ namespace DungeonSurvivors.EditorTools
             camera.gameObject.AddComponent<AdaptiveCamera>();
 
             BuildArena(sprite);
-            var runHost = BuildRunHost(runDefinition);
+            // Loaded only now: opening the scene in Single mode unloads assets loaded before it, which would wire a destroyed reference.
+            var runHost = BuildRunHost(LoadOrCreateRunDefinition());
             Wire(player.GetComponent<PlayerMovement>(), "runHost", runHost);
             BuildEnemySpawning(runHost, enemyPrefab, player.transform, camera);
             BuildStartingWeapon(runHost, bulletPrefab, player.transform);

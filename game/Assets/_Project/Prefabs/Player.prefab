@@ -170,4 +170,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac9cbc7eb26ac1f4db633fcd84ccf45f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonSurvivors.PlayerMovement
-  moveSpeed: 5
+  runHost: {fileID: 0}
