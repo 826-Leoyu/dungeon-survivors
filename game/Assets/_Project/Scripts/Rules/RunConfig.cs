@@ -16,11 +16,15 @@ namespace DungeonSurvivors.Rules
         /// <summary>The weapon the player starts with: the straight shot.</summary>
         public WeaponConfig StartingWeapon { get; }
 
-        public RunConfig(PlayerConfig player, EnemyConfig chaser, WeaponConfig startingWeapon)
+        /// <summary>The XP curve: how much XP each level costs.</summary>
+        public ProgressionConfig Progression { get; }
+
+        public RunConfig(PlayerConfig player, EnemyConfig chaser, WeaponConfig startingWeapon, ProgressionConfig progression)
         {
             Player = player ?? throw new ArgumentNullException(nameof(player));
             Chaser = chaser ?? throw new ArgumentNullException(nameof(chaser));
             StartingWeapon = startingWeapon ?? throw new ArgumentNullException(nameof(startingWeapon));
+            Progression = progression ?? throw new ArgumentNullException(nameof(progression));
         }
     }
 }

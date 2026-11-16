@@ -18,19 +18,25 @@ namespace DungeonSurvivors.Rules.Tests
         [Test]
         public void MissingPlayer_IsRejected()
         {
-            Assert.Throws<ArgumentNullException>(() => new RunConfig(null, TestConfigs.Chaser(), TestConfigs.StraightShot()));
+            Assert.Throws<ArgumentNullException>(() => new RunConfig(null, TestConfigs.Chaser(), TestConfigs.StraightShot(), TestConfigs.Progression()));
         }
 
         [Test]
         public void MissingChaser_IsRejected()
         {
-            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), null, TestConfigs.StraightShot()));
+            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), null, TestConfigs.StraightShot(), TestConfigs.Progression()));
         }
 
         [Test]
         public void MissingStartingWeapon_IsRejected()
         {
-            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), TestConfigs.Chaser(), null));
+            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), TestConfigs.Chaser(), null, TestConfigs.Progression()));
+        }
+
+        [Test]
+        public void MissingProgression_IsRejected()
+        {
+            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), TestConfigs.Chaser(), TestConfigs.StraightShot(), null));
         }
     }
 }

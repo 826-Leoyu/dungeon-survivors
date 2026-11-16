@@ -29,15 +29,15 @@ _Avoid_: Return、Despawn、Recycle
 _Avoid_: Game、Session、Match、Round
 
 **Run 配置（RunConfig）**:
-一局使用的全部数值的普通数据，包含玩家配置、敌人配置（目前只有追踪型敌人 `Chaser`）和开局武器配置（`StartingWeapon`）。由 RunHost 在 Run 开始时从 Run 定义转换而来；Run 自己用玩家的数值，表现层组件从 `Run.Config` 读取各自的数值。
+一局使用的全部数值的普通数据，包含玩家配置、敌人配置（目前只有追踪型敌人 `Chaser`）、开局武器配置（`StartingWeapon`）和经验曲线（`Progression`）。由 RunHost 在 Run 开始时从 Run 定义转换而来；Run 自己用玩家的数值，表现层组件从 `Run.Config` 读取各自的数值。
 _Avoid_: Settings、Params
 
 **玩家 / 敌人 / 武器配置（PlayerConfig / EnemyConfig / WeaponConfig）**:
-规则层中某一对象数值的不可变普通数据，构造时拒绝非法数值。玩家：最大生命值、受伤间隔、移动速度；敌人：生命值、移动速度、接触伤害；武器：伤害、射击间隔、子弹速度、子弹飞行时间。
+规则层中某一对象数值的不可变普通数据，构造时拒绝非法数值。玩家：最大生命值、受伤间隔、移动速度、拾取半径；敌人：生命值、移动速度、接触伤害、掉落经验；武器：伤害、射击间隔、子弹速度、子弹飞行时间。
 _Avoid_: Stats、Settings
 
 **定义（Definition）**:
-在编辑器中调整数值的 ScriptableObject 资产（`PlayerDefinition`、`EnemyDefinition`、`WeaponDefinition`，以及把它们组合在一起的 `RunDefinition`），各自用 `ToConfig()` 转换为对应的配置。放在 `Assets/_Project/Config/`；只在 Run 开始时读取一次，所以修改后下次运行生效。规则层不引用定义。
+在编辑器中调整数值的 ScriptableObject 资产（`PlayerDefinition`、`EnemyDefinition`、`WeaponDefinition`、`ProgressionDefinition`，以及把它们组合在一起的 `RunDefinition`），各自用 `ToConfig()` 转换为对应的配置。放在 `Assets/_Project/Config/`；只在 Run 开始时读取一次，所以修改后下次运行生效。规则层不引用定义。
 _Avoid_: Data、Preset、Template、用「配置」指 ScriptableObject
 
 **Tick**:
@@ -63,6 +63,32 @@ _Avoid_: Score、kill count
 **结局（Outcome）**:
 Run 的胜负状态：进行中（`InProgress`）、失败（`Defeat`）；之后加入胜利。Run 结束后不再接受任何事件。
 _Avoid_: Result、State、GameOver
+
+### 经验与等级
+
+**经验（XP）**:
+玩家拾取经验宝石获得的点数，累积到下一级所需经验时升级。代码中 `Run.Xp` 是当前等级已攒的经验，`Run.GainXp` 报告获得的经验；Run 结束后获得的经验被忽略。
+_Avoid_: Experience、EXP、points
+
+**等级（Level）**:
+玩家的等级，从 1 开始；经验够了立即升级，不等升级被处理。代码中为 `Run.Level`。
+_Avoid_: Rank、Tier
+
+**经验曲线（Progression）**:
+每级所需经验的规则：从 n 级升到 n + 1 级需要 `FirstLevelXp + XpGrowth × (n − 1)`，每级比上一级多一点。代码中为 `ProgressionConfig`（`XpToLevelUpFrom`），在 `ProgressionDefinition` 中调整；当前等级还差多少看 `Run.XpToNextLevel`。
+_Avoid_: XP table、level curve、用 Progression 指局外成长
+
+**待处理的升级（Pending level-up）**:
+已经达到、但还没让玩家三选一的升级。一次获得的经验够升多级时，每级排一个，不会丢失；升级三选一用 `Run.ConsumeLevelUp` 逐个处理。代码中为 `Run.PendingLevelUps`。
+_Avoid_: Level-up queue（指代码时）、unspent levels
+
+**经验宝石（XP gem）**:
+敌人死亡时在原地掉落的拾取物，带着该敌人的掉落经验（`EnemyConfig.XpDrop`），从对象池取出；池满时这次掉落被跳过。不会自己消失。代码中为 `XpGem`。
+_Avoid_: Orb、Pickup、Drop、Coin
+
+**拾取半径（Pickup radius）**:
+经验宝石与玩家的距离小于它时被拾取，经验立即交给 Run，宝石回收。是玩家配置的数值（`PlayerConfig.PickupRadius`），不是碰撞体大小。
+_Avoid_: Magnet range、collect radius
 
 ### 敌人与刷怪
 

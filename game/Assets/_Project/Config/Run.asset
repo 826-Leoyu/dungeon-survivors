@@ -15,3 +15,4 @@ MonoBehaviour:
   player: {fileID: 11400000, guid: 05354c4989a4abf4287e8a2026a746ce, type: 2}
   chaser: {fileID: 11400000, guid: be2c9677b778cb5499847c637fea7177, type: 2}
   startingWeapon: {fileID: 11400000, guid: 5de3094917cccbc45be6855a3e45fb96, type: 2}
+  progression: {fileID: 11400000, guid: 4f1f595671a1f5743b3a944557bfada6, type: 2}

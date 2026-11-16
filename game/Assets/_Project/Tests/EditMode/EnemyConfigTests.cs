@@ -9,26 +9,33 @@ namespace DungeonSurvivors.Rules.Tests
         [TestCase(-1)]
         public void NonPositiveMaxHealth_IsRejected(int maxHealth)
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => new EnemyConfig(maxHealth, moveSpeed: 2f, contactDamage: 10));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new EnemyConfig(maxHealth, moveSpeed: 2f, contactDamage: 10, xpDrop: 1));
         }
 
         [Test]
         public void NegativeMoveSpeed_IsRejected()
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => new EnemyConfig(maxHealth: 10, moveSpeed: -1f, contactDamage: 10));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new EnemyConfig(maxHealth: 10, moveSpeed: -1f, contactDamage: 10, xpDrop: 1));
         }
 
         [TestCase(0)]
         [TestCase(-1)]
         public void NonPositiveContactDamage_IsRejected(int contactDamage)
         {
-            Assert.Throws<ArgumentOutOfRangeException>(() => new EnemyConfig(maxHealth: 10, moveSpeed: 2f, contactDamage));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new EnemyConfig(maxHealth: 10, moveSpeed: 2f, contactDamage, xpDrop: 1));
+        }
+
+        [TestCase(0)]
+        [TestCase(-1)]
+        public void NonPositiveXpDrop_IsRejected(int xpDrop)
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => new EnemyConfig(maxHealth: 10, moveSpeed: 2f, contactDamage: 10, xpDrop));
         }
 
         [Test]
         public void ZeroMoveSpeed_IsAllowed()
         {
-            Assert.DoesNotThrow(() => new EnemyConfig(maxHealth: 1, moveSpeed: 0f, contactDamage: 1));
+            Assert.DoesNotThrow(() => new EnemyConfig(maxHealth: 1, moveSpeed: 0f, contactDamage: 1, xpDrop: 1));
         }
     }
 }

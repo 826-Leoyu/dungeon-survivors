@@ -15,6 +15,9 @@ namespace DungeonSurvivors
         [Tooltip("Damage reported to the Run while touching the player; the player's hurt cooldown decides which hits land.")]
         [SerializeField, Min(1)] private int contactDamage = 10;
 
-        public EnemyConfig ToConfig() => new EnemyConfig(maxHealth, moveSpeed, contactDamage);
+        [Tooltip("XP in the gem this enemy drops when it dies.")]
+        [SerializeField, Min(1)] private int xpDrop = 1;
+
+        public EnemyConfig ToConfig() => new EnemyConfig(maxHealth, moveSpeed, contactDamage, xpDrop);
     }
 }

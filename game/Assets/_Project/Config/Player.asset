@@ -15,3 +15,4 @@ MonoBehaviour:
   maxHealth: 100
   hurtCooldown: 0.5
   moveSpeed: 5
+  pickupRadius: 1.5

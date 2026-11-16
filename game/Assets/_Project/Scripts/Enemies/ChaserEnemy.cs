@@ -5,8 +5,9 @@ using UnityEngine;
 namespace DungeonSurvivors
 {
     /// <summary>
-    /// An enemy that walks straight at the player and hurts it on contact. Pooled: the spawner hands it its scene references with
-    /// <see cref="Init"/> each time it comes out of the pool, and it releases itself when it dies. Its numbers come from the Run's chaser config.
+    /// An enemy that walks straight at the player and hurts it on contact, and drops an XP gem when it dies. Pooled: the spawner hands it its
+    /// scene references with <see cref="Init"/> each time it comes out of the pool, and it releases itself when it dies.
+    /// Its numbers come from the Run's chaser config.
     /// Its body is a kinematic trigger: it overlaps other enemies, never pushes the player, and passes through walls.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
@@ -21,6 +22,7 @@ namespace DungeonSurvivors
         private Transform target;
         private RunHost runHost;
         private PrefabPool pool;
+        private PrefabPool gemPool;
         private EnemyConfig config;
         private EnemyHealth health;
         private bool touchingPlayer;
@@ -43,25 +45,37 @@ namespace DungeonSurvivors
         }
 
         /// <summary>
-        /// Gives a freshly spawned enemy what it chases, which Run it reports to and takes its numbers from, and which pool to return to.
-        /// Starts it at full health.
+        /// Gives a freshly spawned enemy what it chases, which Run it reports to and takes its numbers from, which pool to return to,
+        /// and which pool its XP gem comes from. Starts it at full health.
         /// </summary>
-        public void Init(Transform target, RunHost runHost, PrefabPool pool)
+        public void Init(Transform target, RunHost runHost, PrefabPool pool, PrefabPool gemPool)
         {
             this.target = target;
             this.runHost = runHost;
             this.pool = pool;
+            this.gemPool = gemPool;
             config = runHost.Run.Config.Chaser;
             health = new EnemyHealth(config.MaxHealth);
         }
 
-        /// <summary>Called by weapons. When the hit kills the enemy, reports the kill to the Run and returns the enemy to its pool.</summary>
+        /// <summary>
+        /// Called by weapons. When the hit kills the enemy, reports the kill to the Run, drops an XP gem where it died,
+        /// and returns the enemy to its pool.
+        /// </summary>
         public void TakeHit(int damage)
         {
             if (!health.TakeDamage(damage)) return;
 
             runHost.Run.RecordKill();
+            DropGem();
             pool.Release(gameObject);
+        }
+
+        // When the gem pool is at its cap the drop is skipped rather than creating more gems.
+        private void DropGem()
+        {
+            if (!gemPool.TryGet(transform.position, out var gem)) return;
+            gem.GetComponent<XpGem>().Init(config.XpDrop, target, runHost, gemPool);
         }
 
         private void FixedUpdate()
