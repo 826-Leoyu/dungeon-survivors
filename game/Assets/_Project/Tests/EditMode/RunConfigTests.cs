@@ -18,25 +18,31 @@ namespace DungeonSurvivors.Rules.Tests
         [Test]
         public void MissingPlayer_IsRejected()
         {
-            Assert.Throws<ArgumentNullException>(() => new RunConfig(null, TestConfigs.Chaser(), TestConfigs.StraightShot(), TestConfigs.Progression()));
+            Assert.Throws<ArgumentNullException>(() => new RunConfig(null, TestConfigs.Chaser(), TestConfigs.StraightShot(), TestConfigs.OrbitingKnives(), TestConfigs.Progression()));
         }
 
         [Test]
         public void MissingChaser_IsRejected()
         {
-            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), null, TestConfigs.StraightShot(), TestConfigs.Progression()));
+            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), null, TestConfigs.StraightShot(), TestConfigs.OrbitingKnives(), TestConfigs.Progression()));
         }
 
         [Test]
         public void MissingStartingWeapon_IsRejected()
         {
-            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), TestConfigs.Chaser(), null, TestConfigs.Progression()));
+            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), TestConfigs.Chaser(), null, TestConfigs.OrbitingKnives(), TestConfigs.Progression()));
+        }
+
+        [Test]
+        public void MissingOrbitingKnives_IsRejected()
+        {
+            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), TestConfigs.Chaser(), TestConfigs.StraightShot(), null, TestConfigs.Progression()));
         }
 
         [Test]
         public void MissingProgression_IsRejected()
         {
-            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), TestConfigs.Chaser(), TestConfigs.StraightShot(), null));
+            Assert.Throws<ArgumentNullException>(() => new RunConfig(TestConfigs.Player(), TestConfigs.Chaser(), TestConfigs.StraightShot(), TestConfigs.OrbitingKnives(), null));
         }
     }
 }

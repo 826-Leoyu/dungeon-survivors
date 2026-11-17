@@ -29,15 +29,15 @@ _Avoid_: Return、Despawn、Recycle
 _Avoid_: Game、Session、Match、Round
 
 **Run 配置（RunConfig）**:
-一局使用的全部数值的普通数据，包含玩家配置、敌人配置（目前只有追踪型敌人 `Chaser`）、开局武器配置（`StartingWeapon`）和经验曲线（`Progression`）。由 RunHost 在 Run 开始时从 Run 定义转换而来；Run 自己用玩家的数值，表现层组件从 `Run.Config` 读取各自的数值。
+一局使用的全部数值的普通数据，包含玩家配置、敌人配置（目前只有追踪型敌人 `Chaser`）、开局武器配置（`StartingWeapon`）、环绕飞刀配置（`OrbitingKnives`）和经验曲线（`Progression`）。由 RunHost 在 Run 开始时从 Run 定义转换而来；Run 自己用玩家的数值，表现层组件从 `Run.Config` 读取各自的数值。
 _Avoid_: Settings、Params
 
-**玩家 / 敌人 / 武器配置（PlayerConfig / EnemyConfig / WeaponConfig）**:
-规则层中某一对象数值的不可变普通数据，构造时拒绝非法数值。玩家：最大生命值、受伤间隔、移动速度、拾取半径；敌人：生命值、移动速度、接触伤害、掉落经验；武器：伤害、射击间隔、子弹速度、子弹飞行时间、散射角度，以及强化数值（`WeaponUpgradeConfig`：每级加多少、最高几级）。
+**玩家 / 敌人 / 武器配置（PlayerConfig / EnemyConfig / WeaponConfig / OrbitingKnivesConfig）**:
+规则层中某一对象数值的不可变普通数据，构造时拒绝非法数值。玩家：最大生命值、受伤间隔、移动速度、拾取半径；敌人：生命值、移动速度、接触伤害、掉落经验；子弹类武器（`WeaponConfig`）：伤害、射击间隔、子弹速度、子弹飞行时间、散射角度，以及强化数值（`WeaponUpgradeConfig`：每级加多少、最高几级）；环绕飞刀（`OrbitingKnivesConfig`）：伤害、飞刀数量、半径、转速、命中间隔，以及强化数值（`OrbitingKnivesUpgradeConfig`）。
 _Avoid_: Stats、Settings
 
 **定义（Definition）**:
-在编辑器中调整数值的 ScriptableObject 资产（`PlayerDefinition`、`EnemyDefinition`、`WeaponDefinition`、`ProgressionDefinition`，以及把它们组合在一起的 `RunDefinition`），各自用 `ToConfig()` 转换为对应的配置。放在 `Assets/_Project/Config/`；只在 Run 开始时读取一次，所以修改后下次运行生效。规则层不引用定义。
+在编辑器中调整数值的 ScriptableObject 资产（`PlayerDefinition`、`EnemyDefinition`、`WeaponDefinition`、`OrbitingKnivesDefinition`、`ProgressionDefinition`，以及把它们组合在一起的 `RunDefinition`），各自用 `ToConfig()` 转换为对应的配置。放在 `Assets/_Project/Config/`；只在 Run 开始时读取一次，所以修改后下次运行生效。规则层不引用定义。
 _Avoid_: Data、Preset、Template、用「配置」指 ScriptableObject
 
 **Tick**:
@@ -83,7 +83,7 @@ _Avoid_: XP table、level curve、用 Progression 指局外成长
 _Avoid_: Level-up queue（指代码时）、unspent levels
 
 **强化（Upgrade）**:
-升级时可选的一项：把某件武器的某个数值提高一级（如直线弹幕的伤害、子弹数量、射速）。每项有自己的最高等级，满级后不再出现；最高等级为 0 表示从不出现。之后的新武器以「获得某武器」的强化加入。代码中为 `Upgrade` 枚举，名字会作为游玩数据上报，改名要谨慎。
+升级时可选的一项：把某件武器的某个数值提高一级（如直线弹幕的伤害、子弹数量、射速），或获得一件新武器（获得武器，如 `OrbitingKnivesUnlock`，最高 1 级）。新武器的数值强化在获得它之后才出现。每项有自己的最高等级，满级后不再出现；最高等级为 0 表示从不出现。每件武器自己决定当前提供哪些强化（`IUpgradeable`），Run 把选中的强化交给它所属的武器（`AllUpgrades` 中包含它的那件）。代码中为 `Upgrade` 枚举，名字会作为游玩数据上报，改名要谨慎。
 _Avoid_: Perk、Buff、Power-up、Skill
 
 **升级三选一（Upgrade choice）**:
@@ -149,6 +149,18 @@ _Avoid_: Shotgun、spread shot（指代码时）
 **最近目标（Nearest target）**:
 武器瞄准的敌人：离射击者最近的一个；距离相同时取列表中靠前的。代码中为 `NearestTarget`。
 _Avoid_: Lock-on、aim assist
+
+**环绕飞刀（Orbiting knives）**:
+通过升级三选一获得的武器：若干把飞刀均匀分布、绕玩家旋转，碰到敌人造成伤害；飞刀不会用完，也不从对象池取出。获得前不显示、不造成伤害；游戏冻结时停止转动。飞刀数量、伤害、半径、转速随强化提高，当前数值在规则层的 `Run.OrbitingKnives`，表现层组件为 `OrbitingKnivesWeapon`，每把飞刀为 `Knife`。
+_Avoid_: Orbiter、Satellite、Blade ring
+
+**命中间隔（Hit interval）**:
+同一个敌人被同一件武器再次命中前需等待的秒数；一直接触的武器（环绕飞刀）每个物理步都报告接触，命中间隔决定哪些命中生效，多把飞刀同时碰到也只算一次。按敌人的生成编号（`ChaserEnemy.SpawnId`，对象池复用时也会换新）计时。代码中为 `HitCooldowns`。与受伤间隔不同，后者保护玩家。
+_Avoid_: Damage tick、i-frames、hit cooldown（指概念时）
+
+**环绕布局（Orbit layout）**:
+飞刀在圆周上的位置：均匀分布、整体按同一角度旋转，0 号飞刀从右侧开始，逆时针转动。代码中为 `OrbitLayout`。
+_Avoid_: Ring formation
 
 ### 输入
 

@@ -1,3 +1,4 @@
+using System.Linq;
 using DungeonSurvivors.Rules;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -117,11 +118,15 @@ namespace DungeonSurvivors
             else Close();
         }
 
-        private string Describe(Upgrade upgrade)
+        // Runs only when a choice opens, so the LINQ allocation does not matter.
+        private string Describe(Upgrade upgrade) =>
+            OrbitingKnives.Upgrades.Contains(upgrade) ? DescribeKnives(upgrade) : DescribeStraightShot(upgrade);
+
+        private string DescribeStraightShot(Upgrade upgrade)
         {
             var weapon = Run.StraightShot;
             var upgradeNumbers = Run.Config.StartingWeapon.Upgrades;
-            var level = $"Lv {weapon.LevelOf(upgrade) + 1}/{weapon.MaxLevelOf(upgrade)}";
+            var level = LevelText(weapon.LevelOf(upgrade), weapon.MaxLevelOf(upgrade));
 
             return upgrade switch
             {
@@ -132,6 +137,27 @@ namespace DungeonSurvivors
                 _ => upgrade.ToString(),
             };
         }
+
+        private string DescribeKnives(Upgrade upgrade)
+        {
+            var weapon = Run.OrbitingKnives;
+            var upgradeNumbers = Run.Config.OrbitingKnives.Upgrades;
+            var level = LevelText(weapon.LevelOf(upgrade), weapon.MaxLevelOf(upgrade));
+
+            return upgrade switch
+            {
+                Upgrade.OrbitingKnivesUnlock => $"New weapon\nOrbiting Knives\n{weapon.KnifeCount} knives circle you",
+                Upgrade.OrbitingKnivesDamage => $"Orbiting Knives\nDamage +{upgradeNumbers.DamagePerLevel}\n{level}",
+                Upgrade.OrbitingKnivesKnifeCount => $"Orbiting Knives\n+1 knife\n{level}",
+                Upgrade.OrbitingKnivesRadius => $"Orbiting Knives\nRadius +{upgradeNumbers.RadiusPerLevel:0.##}\n{level}",
+                Upgrade.OrbitingKnivesRotationSpeed =>
+                    $"Orbiting Knives\nSpins {Mathf.RoundToInt(upgradeNumbers.RotationSpeedPerLevel / weapon.RotationSpeed * 100f)}% faster\n{level}",
+                _ => upgrade.ToString(),
+            };
+        }
+
+        // The level the option would reach if picked.
+        private static string LevelText(int level, int maxLevel) => $"Lv {level + 1}/{maxLevel}";
 
         private void OnDestroy()
         {

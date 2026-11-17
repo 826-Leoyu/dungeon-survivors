@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c32dfc31ec0e4f4b8a6bc6404eecc3f, type: 3}
+  m_Name: OrbitingKnives
+  m_EditorClassIdentifier: Assembly-CSharp::DungeonSurvivors.OrbitingKnivesDefinition
+  damage: 4
+  knifeCount: 2
+  radius: 1.6
+  rotationSpeed: 180
+  hitInterval: 0.5
+  damagePerLevel: 3
+  maxDamageLevel: 5
+  maxKnifeCountLevel: 4
+  radiusPerLevel: 0.5
+  maxRadiusLevel: 3
+  rotationSpeedPerLevel: 60
+  maxRotationSpeedLevel: 3

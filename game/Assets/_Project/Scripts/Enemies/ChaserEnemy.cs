@@ -18,6 +18,14 @@ namespace DungeonSurvivors
         /// <summary>Every enemy currently out of the pool, for weapons to aim at. Kept by OnEnable / OnDisable, so it never holds a pooled enemy.</summary>
         public static IReadOnlyList<ChaserEnemy> Active => active;
 
+        private static int lastSpawnId;
+
+        /// <summary>
+        /// Different for every spawn, including each reuse of the same pooled object, so per-enemy state kept by weapons
+        /// (the orbiting knives' hit interval) never carries over to the next enemy the object becomes.
+        /// </summary>
+        public int SpawnId { get; private set; }
+
         private Rigidbody2D body;
         private Transform target;
         private RunHost runHost;
@@ -55,6 +63,7 @@ namespace DungeonSurvivors
             this.pool = pool;
             this.gemPool = gemPool;
             config = runHost.Run.Config.Chaser;
+            SpawnId = ++lastSpawnId;
             health = new EnemyHealth(config.MaxHealth);
         }
 

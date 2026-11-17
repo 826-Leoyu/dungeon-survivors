@@ -13,6 +13,8 @@ namespace DungeonSurvivors.Rules
         public const int ChoicesPerLevelUp = 3;
 
         private readonly IRandom random;
+        // Every weapon a level-up can offer upgrades for, owned or not; each decides what it offers.
+        private readonly IUpgradeable[] weapons;
         private readonly List<Upgrade> availableUpgrades = new List<Upgrade>();
         private List<Upgrade> choices = new List<Upgrade>();
 
@@ -53,6 +55,9 @@ namespace DungeonSurvivors.Rules
         /// <summary>The starting weapon's current numbers, raised by the upgrades picked so far.</summary>
         public StraightShot StraightShot { get; }
 
+        /// <summary>The orbiting knives' current numbers. Not owned until a level-up's choice picks their unlock.</summary>
+        public OrbitingKnives OrbitingKnives { get; }
+
         public RunOutcome Outcome { get; private set; } = RunOutcome.InProgress;
 
         /// <summary>Once over, the Run ignores every further event.</summary>
@@ -64,6 +69,8 @@ namespace DungeonSurvivors.Rules
             this.random = random ?? throw new ArgumentNullException(nameof(random));
             Health = config.Player.MaxHealth;
             StraightShot = new StraightShot(config.StartingWeapon);
+            OrbitingKnives = new OrbitingKnives(config.OrbitingKnives);
+            weapons = new IUpgradeable[] { StraightShot, OrbitingKnives };
         }
 
         /// <summary>Advances the Run's clock by <paramref name="deltaTime"/> seconds.</summary>
@@ -112,7 +119,7 @@ namespace DungeonSurvivors.Rules
             if (IsOver) return;
             if (!choices.Contains(upgrade)) throw new ArgumentException($"{upgrade} is not one of the current choices.", nameof(upgrade));
 
-            StraightShot.Apply(upgrade);
+            WeaponOf(upgrade).Apply(upgrade);
             PendingLevelUps--;
             choices.Clear();
             if (PendingLevelUps > 0) DrawChoices();
@@ -123,7 +130,7 @@ namespace DungeonSurvivors.Rules
         private void DrawChoices()
         {
             availableUpgrades.Clear();
-            StraightShot.AddAvailableUpgrades(availableUpgrades);
+            foreach (var weapon in weapons) weapon.AddAvailableUpgrades(availableUpgrades);
             if (availableUpgrades.Count == 0)
             {
                 PendingLevelUps = 0;
@@ -131,6 +138,19 @@ namespace DungeonSurvivors.Rules
             }
 
             choices = DistinctDraw.Pick(availableUpgrades, ChoicesPerLevelUp, random);
+        }
+
+        private IUpgradeable WeaponOf(Upgrade upgrade)
+        {
+            foreach (var weapon in weapons)
+            {
+                foreach (var candidate in weapon.AllUpgrades)
+                {
+                    if (candidate == upgrade) return weapon;
+                }
+            }
+
+            throw new ArgumentOutOfRangeException(nameof(upgrade), upgrade, "No weapon offers this upgrade.");
         }
 
         /// <summary>Reports a hit on the player. Returns whether the damage was applied (false during the hurt cooldown or once the Run is over).</summary>

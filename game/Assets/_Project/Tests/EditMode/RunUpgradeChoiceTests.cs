@@ -5,7 +5,9 @@ namespace DungeonSurvivors.Rules.Tests
 {
     public class RunUpgradeChoiceTests
     {
-        private static readonly Upgrade[] AllStraightShotUpgrades = { Upgrade.StraightShotDamage, Upgrade.StraightShotBulletCount, Upgrade.StraightShotFireRate };
+        // Every upgrade a new Run can offer: the straight shot's three and the orbiting knives' unlock.
+        private static readonly Upgrade[] NewRunUpgrades =
+            { Upgrade.StraightShotDamage, Upgrade.StraightShotBulletCount, Upgrade.StraightShotFireRate, Upgrade.OrbitingKnivesUnlock };
 
         // Level 1 to 2 costs 5 XP, 2 to 3 costs 10, 3 to 4 costs 15.
         private static Run NewRun(WeaponUpgradeConfig upgrades = null, int seed = 1) =>
@@ -28,7 +30,7 @@ namespace DungeonSurvivors.Rules.Tests
 
             Assert.That(run.UpgradeChoices, Has.Count.EqualTo(3));
             Assert.That(run.UpgradeChoices, Is.Unique);
-            Assert.That(run.UpgradeChoices, Is.SubsetOf(AllStraightShotUpgrades));
+            Assert.That(run.UpgradeChoices, Is.SubsetOf(NewRunUpgrades));
         }
 
         [Test]
@@ -54,7 +56,7 @@ namespace DungeonSurvivors.Rules.Tests
         [Test]
         public void ChoosingDamage_AddsTheDamagePerLevel()
         {
-            var run = LevelledRun();
+            var run = LevelledRun(upgrades: TestConfigs.Upgrades(maxBulletCountLevel: 0));
 
             run.ChooseUpgrade(Upgrade.StraightShotDamage);
 
@@ -65,7 +67,7 @@ namespace DungeonSurvivors.Rules.Tests
         [Test]
         public void ChoosingBulletCount_AddsABullet()
         {
-            var run = LevelledRun();
+            var run = LevelledRun(upgrades: TestConfigs.Upgrades(maxFireRateLevel: 0));
 
             run.ChooseUpgrade(Upgrade.StraightShotBulletCount);
 
@@ -75,7 +77,7 @@ namespace DungeonSurvivors.Rules.Tests
         [Test]
         public void ChoosingFireRateTwice_MultipliesTheIntervalEachTime()
         {
-            var run = LevelledRun(levels: 2);
+            var run = LevelledRun(levels: 2, upgrades: TestConfigs.Upgrades(maxBulletCountLevel: 0));
 
             run.ChooseUpgrade(Upgrade.StraightShotFireRate);
             run.ChooseUpgrade(Upgrade.StraightShotFireRate);
@@ -128,13 +130,14 @@ namespace DungeonSurvivors.Rules.Tests
         [TestCase(3)]
         public void MaxedUpgrade_IsNoLongerOffered(int seed)
         {
-            var run = new Run(TestConfigs.Run(firstLevelXp: 5, xpGrowth: 5, upgrades: TestConfigs.Upgrades(maxDamageLevel: 1)), new SeededRandom(seed));
+            var run = new Run(TestConfigs.Run(firstLevelXp: 5, xpGrowth: 5, upgrades: TestConfigs.Upgrades(maxDamageLevel: 1, maxFireRateLevel: 0)),
+                new SeededRandom(seed));
             run.GainXp(15); // Levels 2 and 3.
 
             run.ChooseUpgrade(Upgrade.StraightShotDamage);
 
             // Only two upgrades are left, so the choice offers fewer than three.
-            Assert.That(run.UpgradeChoices, Is.EquivalentTo(new[] { Upgrade.StraightShotBulletCount, Upgrade.StraightShotFireRate }));
+            Assert.That(run.UpgradeChoices, Is.EquivalentTo(new[] { Upgrade.StraightShotBulletCount, Upgrade.OrbitingKnivesUnlock }));
         }
 
         [Test]
@@ -142,16 +145,19 @@ namespace DungeonSurvivors.Rules.Tests
         {
             var run = LevelledRun(upgrades: TestConfigs.Upgrades(maxBulletCountLevel: 0));
 
-            Assert.That(run.UpgradeChoices, Is.EquivalentTo(new[] { Upgrade.StraightShotDamage, Upgrade.StraightShotFireRate }));
+            Assert.That(run.UpgradeChoices,
+                Is.EquivalentTo(new[] { Upgrade.StraightShotDamage, Upgrade.StraightShotFireRate, Upgrade.OrbitingKnivesUnlock }));
         }
 
         [Test]
         public void LevelUpWithEveryUpgradeMaxed_IsSkipped()
         {
             var upgrades = TestConfigs.Upgrades(maxDamageLevel: 1, maxBulletCountLevel: 0, maxFireRateLevel: 0);
-            var run = LevelledRun(levels: 2, upgrades: upgrades);
+            var knifeUpgrades = TestConfigs.KnifeUpgrades(maxDamageLevel: 0, maxKnifeCountLevel: 0, maxRadiusLevel: 0, maxRotationSpeedLevel: 0);
+            var run = LevelledRun(levels: 3, upgrades: upgrades, knifeUpgrades: knifeUpgrades);
 
             run.ChooseUpgrade(Upgrade.StraightShotDamage);
+            run.ChooseUpgrade(Upgrade.OrbitingKnivesUnlock);
 
             Assert.That(run.UpgradeChoices, Is.Empty);
             Assert.That(run.PendingLevelUps, Is.EqualTo(0));
@@ -202,10 +208,13 @@ namespace DungeonSurvivors.Rules.Tests
             Assert.That(second.UpgradeChoices, Is.EqualTo(first.UpgradeChoices));
         }
 
-        /// <summary>A Run that has just reached <paramref name="levels"/> more levels, each offering every upgrade (there are only three).</summary>
-        private static Run LevelledRun(int levels = 1, WeaponUpgradeConfig upgrades = null)
+        /// <summary>
+        /// A Run that has just reached <paramref name="levels"/> more levels. Tests that pick a particular upgrade set a max level to 0
+        /// so at most three are available: then every one of them is offered.
+        /// </summary>
+        private static Run LevelledRun(int levels = 1, WeaponUpgradeConfig upgrades = null, OrbitingKnivesUpgradeConfig knifeUpgrades = null)
         {
-            var run = NewRun(upgrades);
+            var run = new Run(TestConfigs.Run(firstLevelXp: 5, xpGrowth: 5, upgrades: upgrades, knifeUpgrades: knifeUpgrades), new SeededRandom(1));
             // 5, 15, 30 XP reach levels 2, 3, 4.
             run.GainXp(new[] { 0, 5, 15, 30 }[levels]);
             Assert.That(run.PendingLevelUps, Is.EqualTo(levels));
