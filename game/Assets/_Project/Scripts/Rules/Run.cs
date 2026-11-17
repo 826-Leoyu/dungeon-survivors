@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace DungeonSurvivors.Rules
 {
@@ -8,7 +9,12 @@ namespace DungeonSurvivors.Rules
     /// </summary>
     public sealed class Run
     {
+        /// <summary>How many options a level-up offers when that many are available.</summary>
+        public const int ChoicesPerLevelUp = 3;
+
         private readonly IRandom random;
+        private readonly List<Upgrade> availableUpgrades = new List<Upgrade>();
+        private List<Upgrade> choices = new List<Upgrade>();
 
         private float hurtCooldownRemaining;
 
@@ -34,9 +40,18 @@ namespace DungeonSurvivors.Rules
 
         /// <summary>
         /// Level-ups reached but not yet handled. Gaining enough XP for several levels at once queues one per level,
-        /// so none is lost; the level-up choice works through them one at a time with <see cref="ConsumeLevelUp"/>.
+        /// so none is lost; the level-up choice works through them one at a time with <see cref="ChooseUpgrade"/>.
         /// </summary>
         public int PendingLevelUps { get; private set; }
+
+        /// <summary>
+        /// The options offered for the oldest pending level-up: up to <see cref="ChoicesPerLevelUp"/> different upgrades, none at its max level.
+        /// Empty when no level-up is waiting for a choice.
+        /// </summary>
+        public IReadOnlyList<Upgrade> UpgradeChoices => choices;
+
+        /// <summary>The starting weapon's current numbers, raised by the upgrades picked so far.</summary>
+        public StraightShot StraightShot { get; }
 
         public RunOutcome Outcome { get; private set; } = RunOutcome.InProgress;
 
@@ -48,6 +63,7 @@ namespace DungeonSurvivors.Rules
             Config = config ?? throw new ArgumentNullException(nameof(config));
             this.random = random ?? throw new ArgumentNullException(nameof(random));
             Health = config.Player.MaxHealth;
+            StraightShot = new StraightShot(config.StartingWeapon);
         }
 
         /// <summary>Advances the Run's clock by <paramref name="deltaTime"/> seconds.</summary>
@@ -83,14 +99,38 @@ namespace DungeonSurvivors.Rules
                 Level++;
                 PendingLevelUps++;
             }
+
+            if (PendingLevelUps > 0 && choices.Count == 0) DrawChoices();
         }
 
-        /// <summary>Takes the oldest pending level-up off the queue once it has been handled. Returns false when none is pending.</summary>
-        public bool ConsumeLevelUp()
+        /// <summary>
+        /// Handles the oldest pending level-up with <paramref name="upgrade"/>, which must be one of the <see cref="UpgradeChoices"/>,
+        /// then offers the choices for the next pending level-up, if any. Ignored once the Run is over.
+        /// </summary>
+        public void ChooseUpgrade(Upgrade upgrade)
         {
-            if (PendingLevelUps == 0) return false;
+            if (IsOver) return;
+            if (!choices.Contains(upgrade)) throw new ArgumentException($"{upgrade} is not one of the current choices.", nameof(upgrade));
+
+            StraightShot.Apply(upgrade);
             PendingLevelUps--;
-            return true;
+            choices.Clear();
+            if (PendingLevelUps > 0) DrawChoices();
+        }
+
+        // Draws the options for the oldest pending level-up. With every upgrade maxed there is nothing to offer,
+        // so the pending level-ups are dropped rather than showing an empty choice.
+        private void DrawChoices()
+        {
+            availableUpgrades.Clear();
+            StraightShot.AddAvailableUpgrades(availableUpgrades);
+            if (availableUpgrades.Count == 0)
+            {
+                PendingLevelUps = 0;
+                return;
+            }
+
+            choices = DistinctDraw.Pick(availableUpgrades, ChoicesPerLevelUp, random);
         }
 
         /// <summary>Reports a hit on the player. Returns whether the damage was applied (false during the hurt cooldown or once the Run is over).</summary>

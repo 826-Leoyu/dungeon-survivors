@@ -33,7 +33,7 @@ _Avoid_: Game、Session、Match、Round
 _Avoid_: Settings、Params
 
 **玩家 / 敌人 / 武器配置（PlayerConfig / EnemyConfig / WeaponConfig）**:
-规则层中某一对象数值的不可变普通数据，构造时拒绝非法数值。玩家：最大生命值、受伤间隔、移动速度、拾取半径；敌人：生命值、移动速度、接触伤害、掉落经验；武器：伤害、射击间隔、子弹速度、子弹飞行时间。
+规则层中某一对象数值的不可变普通数据，构造时拒绝非法数值。玩家：最大生命值、受伤间隔、移动速度、拾取半径；敌人：生命值、移动速度、接触伤害、掉落经验；武器：伤害、射击间隔、子弹速度、子弹飞行时间、散射角度，以及强化数值（`WeaponUpgradeConfig`：每级加多少、最高几级）。
 _Avoid_: Stats、Settings
 
 **定义（Definition）**:
@@ -79,8 +79,20 @@ _Avoid_: Rank、Tier
 _Avoid_: XP table、level curve、用 Progression 指局外成长
 
 **待处理的升级（Pending level-up）**:
-已经达到、但还没让玩家三选一的升级。一次获得的经验够升多级时，每级排一个，不会丢失；升级三选一用 `Run.ConsumeLevelUp` 逐个处理。代码中为 `Run.PendingLevelUps`。
+已经达到、但还没让玩家三选一的升级。一次获得的经验够升多级时，每级排一个，不会丢失；升级三选一逐个处理（`Run.ChooseUpgrade`）。所有强化都满级时，剩下的待处理升级直接作废。代码中为 `Run.PendingLevelUps`。
 _Avoid_: Level-up queue（指代码时）、unspent levels
+
+**强化（Upgrade）**:
+升级时可选的一项：把某件武器的某个数值提高一级（如直线弹幕的伤害、子弹数量、射速）。每项有自己的最高等级，满级后不再出现；最高等级为 0 表示从不出现。之后的新武器以「获得某武器」的强化加入。代码中为 `Upgrade` 枚举，名字会作为游玩数据上报，改名要谨慎。
+_Avoid_: Perk、Buff、Power-up、Skill
+
+**升级三选一（Upgrade choice）**:
+最早一个待处理的升级给出的选项：从可用的强化（未满级的）中不重复抽取至多三项，可用项不足三项时给出实际数量。玩家选一项后，强化生效，处理下一个待处理的升级。选择期间表现层冻结游戏时间。代码中为 `Run.UpgradeChoices` / `Run.ChooseUpgrade`，界面为 `LevelUpPanel`。
+_Avoid_: Level-up menu、card draft、reward
+
+**不重复抽取（Distinct draw）**:
+从池中随机抽取若干个不同的项，随机数来自注入的 `IRandom`，所以同一种子抽出同样结果。代码中为 `DistinctDraw.Pick`。
+_Avoid_: Shuffle、Roll
 
 **经验宝石（XP gem）**:
 敌人死亡时在原地掉落的拾取物，带着该敌人的掉落经验（`EnemyConfig.XpDrop`），从对象池取出；池满时这次掉落被跳过。不会自己消失。代码中为 `XpGem`。
@@ -119,7 +131,7 @@ _Avoid_: Spawner、wave timer
 ### 武器
 
 **直线弹幕（Straight shot）**:
-开局自带的武器：按固定射速从玩家位置朝最近的敌人发射子弹；没有敌人时不发射。代码中为 `StraightShotWeapon`。
+开局自带的武器：按射速从玩家位置朝最近的敌人发射一轮子弹，多发时呈扇形散开；没有敌人时、游戏冻结时不发射。伤害、子弹数量、射速随强化提高，当前数值在规则层的 `Run.StraightShot`，表现层组件为 `StraightShotWeapon`。
 _Avoid_: Gun、Shooter、Projectile weapon
 
 **子弹（Bullet）**:
@@ -127,8 +139,12 @@ _Avoid_: Gun、Shooter、Projectile weapon
 _Avoid_: Projectile、Shot、Missile
 
 **射击冷却（Fire cooldown）**:
-决定武器何时可以开火的规则：开火后需等待一个射击间隔；一开始就是就绪状态；就绪状态不累积，没有目标的时间不会攒成一串连发。代码中为 `FireCooldown`。与刷怪计时器不同，后者会补上长帧丢失的次数。
+决定武器何时可以开火的规则：开火后需等待一个射击间隔（射速强化改变间隔后，从下一发开始生效）；一开始就是就绪状态；就绪状态不累积，没有目标的时间不会攒成一串连发。代码中为 `FireCooldown`。与刷怪计时器不同，后者会补上长帧丢失的次数。
 _Avoid_: Fire timer、reload
+
+**扇形散射（Fan spread）**:
+一轮多发子弹的瞄准方式：以朝向目标的方向为中心，相邻子弹相隔固定角度（散射角度），左右对称；只有一发时正对目标。代码中为 `FanSpread`。
+_Avoid_: Shotgun、spread shot（指代码时）
 
 **最近目标（Nearest target）**:
 武器瞄准的敌人：离射击者最近的一个；距离相同时取列表中靠前的。代码中为 `NearestTarget`。

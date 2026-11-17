@@ -8,14 +8,24 @@ namespace DungeonSurvivors.Rules
     /// </summary>
     public sealed class FireCooldown
     {
-        private readonly float interval;
+        private float interval;
         private float remaining;
 
         /// <param name="interval">Seconds between shots.</param>
         public FireCooldown(float interval)
         {
-            if (interval <= 0f) throw new ArgumentOutOfRangeException(nameof(interval), interval, "Must be positive.");
-            this.interval = interval;
+            Interval = interval;
+        }
+
+        /// <summary>Seconds between shots. A change applies from the next shot; a cooldown already running keeps its length.</summary>
+        public float Interval
+        {
+            get => interval;
+            set
+            {
+                if (value <= 0f) throw new ArgumentOutOfRangeException(nameof(value), value, "Must be positive.");
+                interval = value;
+            }
         }
 
         /// <summary>Advances the cooldown by <paramref name="deltaTime"/> seconds.</summary>

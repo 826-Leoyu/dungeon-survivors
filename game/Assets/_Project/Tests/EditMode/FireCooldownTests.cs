@@ -48,11 +48,39 @@ namespace DungeonSurvivors.Rules.Tests
             Assert.That(cooldown.TryFire(), Is.False);
         }
 
+        [Test]
+        public void ChangedInterval_AppliesFromTheNextShot()
+        {
+            var cooldown = new FireCooldown(1f);
+            cooldown.TryFire();
+
+            cooldown.Interval = 0.25f;
+
+            // The cooldown already running keeps its old length...
+            cooldown.Tick(0.5f);
+            Assert.That(cooldown.TryFire(), Is.False);
+            cooldown.Tick(0.5f);
+            Assert.That(cooldown.TryFire(), Is.True);
+
+            // ...and the next one uses the new interval.
+            cooldown.Tick(0.25f);
+            Assert.That(cooldown.TryFire(), Is.True);
+        }
+
         [TestCase(0f)]
         [TestCase(-1f)]
         public void NonPositiveInterval_IsRejected(float interval)
         {
             Assert.Throws<ArgumentOutOfRangeException>(() => new FireCooldown(interval));
+        }
+
+        [TestCase(0f)]
+        [TestCase(-1f)]
+        public void ChangingToNonPositiveInterval_IsRejected(float interval)
+        {
+            var cooldown = new FireCooldown(Interval);
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => cooldown.Interval = interval);
         }
 
         [Test]
