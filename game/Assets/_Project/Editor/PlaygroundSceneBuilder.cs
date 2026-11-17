@@ -11,11 +11,11 @@ namespace DungeonSurvivors.EditorTools
 {
     /// <summary>
     /// Builds the Playground test scene (player, walls, obstacles, following adaptive camera, Run, enemy spawning with XP gem drops,
-    /// starting weapon, touch joystick, level-up choice panel) from code,
+    /// starting weapon, orbiting knives, touch joystick, level-up choice panel) from code,
     /// so the scene is reproducible and reviewable instead of hand-assembled.
     /// Run from the menu, or in batch mode with
     /// <c>-executeMethod DungeonSurvivors.EditorTools.PlaygroundSceneBuilder.Build</c>.
-    /// Re-running overwrites the scene and the player, enemy, bullet and XP gem prefabs; manual edits to them are lost on the next rebuild.
+    /// Re-running overwrites the scene and the player, enemy, bullet, knife and XP gem prefabs; manual edits to them are lost on the next rebuild.
     /// Tuning numbers live in the definition assets under <c>Config/</c>, which are created only when missing, so a rebuild keeps them.
     /// </summary>
     public static class PlaygroundSceneBuilder
@@ -26,6 +26,7 @@ namespace DungeonSurvivors.EditorTools
         private const string PrefabPath = Root + "/Prefabs/Player.prefab";
         private const string EnemyPrefabPath = Root + "/Prefabs/ChaserEnemy.prefab";
         private const string BulletPrefabPath = Root + "/Prefabs/Bullet.prefab";
+        private const string KnifePrefabPath = Root + "/Prefabs/Knife.prefab";
         private const string GemPrefabPath = Root + "/Prefabs/XpGem.prefab";
         private const string SpritePath = Root + "/Art/Placeholder/WhiteSquare.png";
         private const string ConfigFolder = Root + "/Config";
@@ -33,6 +34,7 @@ namespace DungeonSurvivors.EditorTools
         private const string PlayerDefinitionPath = ConfigFolder + "/Player.asset";
         private const string ChaserDefinitionPath = ConfigFolder + "/ChaserEnemy.asset";
         private const string StraightShotDefinitionPath = ConfigFolder + "/StraightShot.asset";
+        private const string OrbitingKnivesDefinitionPath = ConfigFolder + "/OrbitingKnives.asset";
         private const string ProgressionDefinitionPath = ConfigFolder + "/Progression.asset";
         private const int SpriteSize = 16;
 
@@ -67,6 +69,7 @@ namespace DungeonSurvivors.EditorTools
             var enemyPrefab = CreateEnemyPrefab(sprite);
             var bulletPrefab = CreateBulletPrefab(sprite);
             var gemPrefab = CreateGemPrefab(sprite);
+            CreateKnifePrefab(sprite);
 
             // Start from the URP 2D template scene so the camera and Global Light 2D are already set up.
             EnsureFolder(Path.GetDirectoryName(ScenePath));
@@ -89,6 +92,7 @@ namespace DungeonSurvivors.EditorTools
             Wire(player.GetComponent<PlayerMovement>(), "runHost", runHost);
             BuildEnemySpawning(runHost, enemyPrefab, gemPrefab, player.transform, camera);
             BuildStartingWeapon(runHost, bulletPrefab, player.transform);
+            BuildOrbitingKnives(runHost, player.GetComponent<Rigidbody2D>());
             BuildTouchJoystick();
             BuildLevelUpPanel(runHost);
 
@@ -152,6 +156,24 @@ namespace DungeonSurvivors.EditorTools
             return SaveAsPrefab(go, BulletPrefabPath);
         }
 
+        private static void CreateKnifePrefab(Sprite sprite)
+        {
+            // A thin blade, long along its local y axis so the weapon can point it along the orbit. A trigger, like the bullets.
+            var go = new GameObject("Knife");
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.color = new Color(0.85f, 0.9f, 1f);
+            renderer.sortingOrder = 15;
+            go.transform.localScale = new Vector3(0.2f, 0.7f, 1f);
+
+            var collider = go.AddComponent<BoxCollider2D>();
+            collider.isTrigger = true;
+
+            go.AddComponent<Knife>(); // RequireComponent adds the Rigidbody2D
+            Knife.ConfigureBody(go.GetComponent<Rigidbody2D>());
+            SaveAsPrefab(go, KnifePrefabPath);
+        }
+
         private static GameObject CreateGemPrefab(Sprite sprite)
         {
             // No collider: the gem checks its distance to the player itself. A small diamond drawn under the enemies.
@@ -193,7 +215,7 @@ namespace DungeonSurvivors.EditorTools
         }
 
         /// <summary>
-        /// Loads the Run definition, or creates it, and fills any of its empty slots (player, enemy, weapon, progression) with the
+        /// Loads the Run definition, or creates it, and fills any of its empty slots (player, enemy, weapons, progression) with the
         /// definition at its usual path, created at its code defaults when missing. Assigned slots and existing assets are left untouched,
         /// so a rebuild keeps their tuning and a Run definition from before a slot existed gets it filled.
         /// </summary>
@@ -206,6 +228,7 @@ namespace DungeonSurvivors.EditorTools
             FillIfEmpty<PlayerDefinition>(definition, "player", PlayerDefinitionPath);
             FillIfEmpty<EnemyDefinition>(definition, "chaser", ChaserDefinitionPath);
             FillIfEmpty<WeaponDefinition>(definition, "startingWeapon", StraightShotDefinitionPath);
+            FillIfEmpty<OrbitingKnivesDefinition>(definition, "orbitingKnives", OrbitingKnivesDefinitionPath);
             FillIfEmpty<ProgressionDefinition>(definition, "progression", ProgressionDefinitionPath);
             if (definition.ApplyModifiedPropertiesWithoutUndo()) EditorUtility.SetDirty(runDefinition);
             return runDefinition;
@@ -268,6 +291,18 @@ namespace DungeonSurvivors.EditorTools
             weapon.FindProperty("runHost").objectReferenceValue = runHost;
             weapon.FindProperty("bulletPool").objectReferenceValue = pool;
             weapon.FindProperty("shooter").objectReferenceValue = player;
+            weapon.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void BuildOrbitingKnives(RunHost runHost, Rigidbody2D player)
+        {
+            // Loaded only now, like the Run definition: a component of a prefab loaded before the scene opened is destroyed by the
+            // Single-mode open and would wire as missing (prefab GameObjects survive it, their components do not).
+            var knifePrefab = AssetDatabase.LoadAssetAtPath<Knife>(KnifePrefabPath);
+            var weapon = new SerializedObject(new GameObject("OrbitingKnivesWeapon").AddComponent<OrbitingKnivesWeapon>());
+            weapon.FindProperty("runHost").objectReferenceValue = runHost;
+            weapon.FindProperty("knifePrefab").objectReferenceValue = knifePrefab;
+            weapon.FindProperty("center").objectReferenceValue = player;
             weapon.ApplyModifiedPropertiesWithoutUndo();
         }
 
