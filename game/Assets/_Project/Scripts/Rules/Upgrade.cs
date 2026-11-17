@@ -13,7 +13,7 @@ namespace DungeonSurvivors.Rules
         /// <summary>Gets the orbiting knives. Their stat upgrades are offered only after this one is picked.</summary>
         OrbitingKnivesUnlock,
         OrbitingKnivesDamage,
-        OrbitingKnivesCount,
+        OrbitingKnivesKnifeCount,
         OrbitingKnivesRadius,
         OrbitingKnivesRotationSpeed,
     }

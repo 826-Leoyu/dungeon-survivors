@@ -83,7 +83,7 @@ _Avoid_: XP table、level curve、用 Progression 指局外成长
 _Avoid_: Level-up queue（指代码时）、unspent levels
 
 **强化（Upgrade）**:
-升级时可选的一项：把某件武器的某个数值提高一级（如直线弹幕的伤害、子弹数量、射速），或获得一件新武器（获得武器，如 `OrbitingKnivesUnlock`，最高 1 级）。新武器的数值强化在获得它之后才出现。每项有自己的最高等级，满级后不再出现；最高等级为 0 表示从不出现。每件武器自己决定当前提供哪些强化（`IUpgradeable`），Run 把选中的强化交给它所属的武器。代码中为 `Upgrade` 枚举，名字会作为游玩数据上报，改名要谨慎。
+升级时可选的一项：把某件武器的某个数值提高一级（如直线弹幕的伤害、子弹数量、射速），或获得一件新武器（获得武器，如 `OrbitingKnivesUnlock`，最高 1 级）。新武器的数值强化在获得它之后才出现。每项有自己的最高等级，满级后不再出现；最高等级为 0 表示从不出现。每件武器自己决定当前提供哪些强化（`IUpgradeable`），Run 把选中的强化交给它所属的武器（`AllUpgrades` 中包含它的那件）。代码中为 `Upgrade` 枚举，名字会作为游玩数据上报，改名要谨慎。
 _Avoid_: Perk、Buff、Power-up、Skill
 
 **升级三选一（Upgrade choice）**:

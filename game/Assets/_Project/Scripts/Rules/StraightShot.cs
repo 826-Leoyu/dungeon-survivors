@@ -31,15 +31,7 @@ namespace DungeonSurvivors.Rules
         /// <summary>Seconds between volleys.</summary>
         public float FireInterval => config.FireInterval * (float)Math.Pow(config.Upgrades.FireIntervalMultiplier, fireRateLevel);
 
-        bool IUpgradeable.Owns(Upgrade upgrade)
-        {
-            foreach (var candidate in Upgrades)
-            {
-                if (candidate == upgrade) return true;
-            }
-
-            return false;
-        }
+        IReadOnlyList<Upgrade> IUpgradeable.AllUpgrades => Upgrades;
 
         void IUpgradeable.Apply(Upgrade upgrade)
         {

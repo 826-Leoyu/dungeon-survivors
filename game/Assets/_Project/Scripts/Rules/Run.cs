@@ -144,7 +144,10 @@ namespace DungeonSurvivors.Rules
         {
             foreach (var weapon in weapons)
             {
-                if (weapon.Owns(upgrade)) return weapon;
+                foreach (var candidate in weapon.AllUpgrades)
+                {
+                    if (candidate == upgrade) return weapon;
+                }
             }
 
             throw new ArgumentOutOfRangeException(nameof(upgrade), upgrade, "No weapon offers this upgrade.");

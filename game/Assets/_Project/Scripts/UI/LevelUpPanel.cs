@@ -148,7 +148,7 @@ namespace DungeonSurvivors
             {
                 Upgrade.OrbitingKnivesUnlock => $"New weapon\nOrbiting Knives\n{weapon.KnifeCount} knives circle you",
                 Upgrade.OrbitingKnivesDamage => $"Orbiting Knives\nDamage +{upgradeNumbers.DamagePerLevel}\n{level}",
-                Upgrade.OrbitingKnivesCount => $"Orbiting Knives\n+1 knife\n{level}",
+                Upgrade.OrbitingKnivesKnifeCount => $"Orbiting Knives\n+1 knife\n{level}",
                 Upgrade.OrbitingKnivesRadius => $"Orbiting Knives\nRadius +{upgradeNumbers.RadiusPerLevel:0.##}\n{level}",
                 Upgrade.OrbitingKnivesRotationSpeed =>
                     $"Orbiting Knives\nSpins {Mathf.RoundToInt(upgradeNumbers.RotationSpeedPerLevel / weapon.RotationSpeed * 100f)}% faster\n{level}",

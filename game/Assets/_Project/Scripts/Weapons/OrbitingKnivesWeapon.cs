@@ -34,8 +34,8 @@ namespace DungeonSurvivors
         // Children of this object, not of the player: colliders under the player's body would become part of it.
         private void CreateKnives()
         {
-            var upgrades = runHost.Run.Config.OrbitingKnives;
-            knives = new Knife[upgrades.KnifeCount + upgrades.Upgrades.MaxKnifeCountLevel];
+            var config = runHost.Run.Config.OrbitingKnives;
+            knives = new Knife[config.KnifeCount + config.Upgrades.MaxKnifeCountLevel];
             for (var i = 0; i < knives.Length; i++)
             {
                 knives[i] = Instantiate(knifePrefab, transform);
@@ -53,13 +53,18 @@ namespace DungeonSurvivors
                 return;
             }
 
-            cooldowns.Interval = current.HitInterval;
-            cooldowns.Tick(Time.fixedDeltaTime);
-            rotationDegrees = Mathf.Repeat(rotationDegrees + current.RotationSpeed * Time.fixedDeltaTime, 360f);
-
-            var newlyShown = shownCount;
+            Advance(Time.fixedDeltaTime);
+            var firstNew = shownCount;
             ShowKnives(count);
-            PlaceKnives(count, newlyShown);
+            PlaceKnives(count, firstNew);
+        }
+
+        // Moves the weapon's clocks on: the hit intervals run down and the ring turns.
+        private void Advance(float deltaTime)
+        {
+            cooldowns.Interval = current.HitInterval;
+            cooldowns.Tick(deltaTime);
+            rotationDegrees = Mathf.Repeat(rotationDegrees + current.RotationSpeed * deltaTime, 360f);
         }
 
         private void ShowKnives(int count)
@@ -73,25 +78,25 @@ namespace DungeonSurvivors
         private void PlaceKnives(int count, int firstNew)
         {
             // The player moves by velocity, so its body only reaches this step's position after this FixedUpdate: aim there, or the ring trails behind it.
-            var centre = center.position + center.linearVelocity * Time.fixedDeltaTime;
+            var orbitCenter = center.position + center.linearVelocity * Time.fixedDeltaTime;
             for (var i = 0; i < count; i++)
             {
                 var (x, y) = OrbitLayout.Offset(i, count, rotationDegrees, current.Radius);
-                var position = centre + new Vector2(x, y);
+                var position = orbitCenter + new Vector2(x, y);
                 // Blade points along the orbit: the knife sprite is long along its local y axis, and the orbit's tangent is the radius turned 90 degrees.
                 var angle = Mathf.Atan2(y, x) * Mathf.Rad2Deg;
 
-                var body = knives[i].Body;
-                if (i >= firstNew)
-                {
-                    body.position = position;
-                    body.rotation = angle;
-                }
-                else
-                {
-                    body.MovePositionAndRotation(position, angle);
-                }
+                if (i >= firstNew) Teleport(knives[i], position, angle);
+                else knives[i].Body.MovePositionAndRotation(position, angle);
             }
+        }
+
+        // Sets the transform as well as the body: with interpolation on, setting only the body would draw the knife at its old place for a frame.
+        private static void Teleport(Knife knife, Vector2 position, float angle)
+        {
+            knife.Body.position = position;
+            knife.Body.rotation = angle;
+            knife.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, 0f, angle));
         }
 
         /// <summary>Called by a knife touching <paramref name="enemy"/>: damages it unless the knives hit it less than a hit interval ago.</summary>

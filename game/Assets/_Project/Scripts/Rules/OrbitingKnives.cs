@@ -12,14 +12,14 @@ namespace DungeonSurvivors.Rules
         /// <summary>Every upgrade this weapon offers: the unlock first, then its stat upgrades.</summary>
         public static readonly IReadOnlyList<Upgrade> Upgrades = new[]
         {
-            Upgrade.OrbitingKnivesUnlock, Upgrade.OrbitingKnivesDamage, Upgrade.OrbitingKnivesCount,
+            Upgrade.OrbitingKnivesUnlock, Upgrade.OrbitingKnivesDamage, Upgrade.OrbitingKnivesKnifeCount,
             Upgrade.OrbitingKnivesRadius, Upgrade.OrbitingKnivesRotationSpeed,
         };
 
         private readonly OrbitingKnivesConfig config;
         private int unlockLevel;
         private int damageLevel;
-        private int countLevel;
+        private int knifeCountLevel;
         private int radiusLevel;
         private int rotationSpeedLevel;
 
@@ -35,7 +35,7 @@ namespace DungeonSurvivors.Rules
         public int Damage => config.Damage + config.Upgrades.DamagePerLevel * damageLevel;
 
         /// <summary>Knives circling the player.</summary>
-        public int KnifeCount => config.KnifeCount + countLevel;
+        public int KnifeCount => config.KnifeCount + knifeCountLevel;
 
         /// <summary>World units from the player to each knife.</summary>
         public float Radius => config.Radius + config.Upgrades.RadiusPerLevel * radiusLevel;
@@ -46,7 +46,7 @@ namespace DungeonSurvivors.Rules
         /// <summary>Seconds after a hit before the knives can hit the same enemy again.</summary>
         public float HitInterval => config.HitInterval;
 
-        bool IUpgradeable.Owns(Upgrade upgrade) => IsKnifeUpgrade(upgrade);
+        IReadOnlyList<Upgrade> IUpgradeable.AllUpgrades => Upgrades;
 
         void IUpgradeable.Apply(Upgrade upgrade)
         {
@@ -54,7 +54,7 @@ namespace DungeonSurvivors.Rules
             {
                 case Upgrade.OrbitingKnivesUnlock: unlockLevel++; break;
                 case Upgrade.OrbitingKnivesDamage: damageLevel++; break;
-                case Upgrade.OrbitingKnivesCount: countLevel++; break;
+                case Upgrade.OrbitingKnivesKnifeCount: knifeCountLevel++; break;
                 case Upgrade.OrbitingKnivesRadius: radiusLevel++; break;
                 case Upgrade.OrbitingKnivesRotationSpeed: rotationSpeedLevel++; break;
                 default: throw NotAKnifeUpgrade(upgrade);
@@ -77,7 +77,7 @@ namespace DungeonSurvivors.Rules
         {
             Upgrade.OrbitingKnivesUnlock => unlockLevel,
             Upgrade.OrbitingKnivesDamage => damageLevel,
-            Upgrade.OrbitingKnivesCount => countLevel,
+            Upgrade.OrbitingKnivesKnifeCount => knifeCountLevel,
             Upgrade.OrbitingKnivesRadius => radiusLevel,
             Upgrade.OrbitingKnivesRotationSpeed => rotationSpeedLevel,
             _ => throw NotAKnifeUpgrade(upgrade),
@@ -88,21 +88,11 @@ namespace DungeonSurvivors.Rules
         {
             Upgrade.OrbitingKnivesUnlock => 1,
             Upgrade.OrbitingKnivesDamage => config.Upgrades.MaxDamageLevel,
-            Upgrade.OrbitingKnivesCount => config.Upgrades.MaxKnifeCountLevel,
+            Upgrade.OrbitingKnivesKnifeCount => config.Upgrades.MaxKnifeCountLevel,
             Upgrade.OrbitingKnivesRadius => config.Upgrades.MaxRadiusLevel,
             Upgrade.OrbitingKnivesRotationSpeed => config.Upgrades.MaxRotationSpeedLevel,
             _ => throw NotAKnifeUpgrade(upgrade),
         };
-
-        private static bool IsKnifeUpgrade(Upgrade upgrade)
-        {
-            foreach (var candidate in Upgrades)
-            {
-                if (candidate == upgrade) return true;
-            }
-
-            return false;
-        }
 
         private static ArgumentOutOfRangeException NotAKnifeUpgrade(Upgrade upgrade) =>
             new ArgumentOutOfRangeException(nameof(upgrade), upgrade, "Not an orbiting-knives upgrade.");

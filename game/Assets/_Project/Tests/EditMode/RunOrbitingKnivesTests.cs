@@ -49,7 +49,7 @@ namespace DungeonSurvivors.Rules.Tests
             var run = KnivesRun(levels: 2, TestConfigs.KnifeUpgrades(maxRotationSpeedLevel: 0));
 
             Assert.That(run.UpgradeChoices,
-                Is.EquivalentTo(new[] { Upgrade.OrbitingKnivesDamage, Upgrade.OrbitingKnivesCount, Upgrade.OrbitingKnivesRadius }));
+                Is.EquivalentTo(new[] { Upgrade.OrbitingKnivesDamage, Upgrade.OrbitingKnivesKnifeCount, Upgrade.OrbitingKnivesRadius }));
         }
 
         [Test]
@@ -76,7 +76,7 @@ namespace DungeonSurvivors.Rules.Tests
         {
             var run = KnivesRun(levels: 2, TestConfigs.KnifeUpgrades(maxRotationSpeedLevel: 0));
 
-            run.ChooseUpgrade(Upgrade.OrbitingKnivesCount);
+            run.ChooseUpgrade(Upgrade.OrbitingKnivesKnifeCount);
 
             Assert.That(run.OrbitingKnives.KnifeCount, Is.EqualTo(3));
         }
@@ -109,7 +109,7 @@ namespace DungeonSurvivors.Rules.Tests
 
             run.ChooseUpgrade(Upgrade.OrbitingKnivesDamage);
 
-            Assert.That(run.UpgradeChoices, Is.EquivalentTo(new[] { Upgrade.OrbitingKnivesCount, Upgrade.OrbitingKnivesRadius }));
+            Assert.That(run.UpgradeChoices, Is.EquivalentTo(new[] { Upgrade.OrbitingKnivesKnifeCount, Upgrade.OrbitingKnivesRadius }));
         }
 
         private static Run NewRun(WeaponUpgradeConfig straightShotUpgrades = null, OrbitingKnivesUpgradeConfig knifeUpgrades = null) =>
